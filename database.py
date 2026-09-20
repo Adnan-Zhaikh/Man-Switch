@@ -25,6 +25,12 @@ def add_checkin(note):
     conn.commit()
     conn.close()
 
-init_db()
-add_checkin("finished setup")
-add_checkin("worked on database.py")
+def get_last_checkin():
+    conn = sqlite3.connect('deadman.db')
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT timestamp FROM checkins ORDER BY timestamp DESC LIMIT 1")
+    result = cursor.fetchone()
+    
+    conn.close()
+    return result[0] if result else None
