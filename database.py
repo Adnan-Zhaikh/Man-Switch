@@ -1,6 +1,6 @@
 import os
 import psycopg2
-from datetime import datetime
+from datetime import datetime, timezone
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -24,7 +24,7 @@ def init_db():
 def add_checkin(note):
     conn = get_conn()
     cursor = conn.cursor()
-    timestamp = datetime.now().isoformat()
+    timestamp = datetime.now(timezone.utc).isoformat()
     cursor.execute(
         "INSERT INTO checkins (timestamp, progress_note) VALUES (%s, %s)",
         (timestamp, note)
