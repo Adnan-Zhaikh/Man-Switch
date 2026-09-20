@@ -23,7 +23,7 @@ def run_deadline_check():
     if result: send_alert()
 
 scheduler = BackgroundScheduler()
-scheduler.add_job(run_deadline_check, 'interval', minutes=1)
+scheduler.add_job(run_deadline_check, 'interval', minutes=15)
 
 @app.on_event("startup")
 def start_scheduler():
@@ -42,3 +42,7 @@ def history():
 @app.get("/", dependencies=[Depends(verify_credentials)])
 def serve_ui():
     return FileResponse("static/index.html")
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
