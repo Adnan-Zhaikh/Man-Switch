@@ -3,7 +3,7 @@ from datetime import datetime
 import requests
 from dotenv import load_dotenv; import os; load_dotenv(); NTFY_TOPIC = os.getenv("NTFY_TOPIC")
 
-DEADLINE_HOURS = 0.01
+DEADLINE_HOURS = 24
 
 def check_deadline():
     last = get_last_checkin()

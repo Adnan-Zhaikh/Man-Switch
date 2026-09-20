@@ -4,12 +4,15 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from scheduler import check_deadline
 from scheduler import send_alert
 from fastapi.staticfiles import StaticFiles
+from fastapi import Depends
+from fastapi.responses import FileResponse
+from auth import verify_credentials
 
 
 app = FastAPI()
 
 
-@app.post("/checkin")
+@app.post("/checkin", dependencies=[Depends(verify_credentials)])
 def checkin(note: str):
     add_checkin(note)
     return {"status": "checked in"}
@@ -32,9 +35,10 @@ def stop_scheduler():
     scheduler.shutdown()
 
 
-@app.get("/history")
+@app.get("/history", dependencies=[Depends(verify_credentials)])
 def history():
     return get_all_checkins()
 
-
-app.mount("/", StaticFiles(directory="static", html=True), name="static")
+@app.get("/", dependencies=[Depends(verify_credentials)])
+def serve_ui():
+    return FileResponse("static/index.html")
