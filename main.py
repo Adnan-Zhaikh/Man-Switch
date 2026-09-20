@@ -1,8 +1,10 @@
 from fastapi import FastAPI
-from database import init_db, add_checkin
+from database import init_db, add_checkin, get_all_checkins
 from apscheduler.schedulers.background import BackgroundScheduler
 from scheduler import check_deadline
 from scheduler import send_alert
+from fastapi.staticfiles import StaticFiles
+
 
 app = FastAPI()
 
@@ -28,3 +30,11 @@ def start_scheduler():
 @app.on_event("shutdown")
 def stop_scheduler():
     scheduler.shutdown()
+
+
+@app.get("/history")
+def history():
+    return get_all_checkins()
+
+
+app.mount("/", StaticFiles(directory="static", html=True), name="static")

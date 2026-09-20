@@ -34,3 +34,13 @@ def get_last_checkin():
     
     conn.close()
     return result[0] if result else None
+
+def get_all_checkins():
+    conn = sqlite3.connect('deadman.db')
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT * FROM checkins ORDER BY timestamp DESC")
+    result = cursor.fetchall()
+
+    conn.close()
+    return result
