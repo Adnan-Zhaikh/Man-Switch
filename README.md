@@ -27,8 +27,8 @@ Built as a learning project covering scheduling, background jobs, environment-ba
 ### 1. Clone and install
 
 ```bash
-git clone <your-repo-url>
-cd DeadmanSwitch
+git clone https://github.com/Adnan-Zhaikh/Man-Switch
+cd Man-Switch
 python -m venv venv
 source venv/bin/activate   # Windows: venv\Scripts\activate
 pip install -r requirements.txt
