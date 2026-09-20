@@ -1,5 +1,7 @@
 from database import get_last_checkin
 from datetime import datetime
+import requests
+from dotenv import load_dotenv; import os; load_dotenv(); NTFY_TOPIC = os.getenv("NTFY_TOPIC")
 
 DEADLINE_HOURS = 0.01
 
@@ -14,3 +16,6 @@ def check_deadline():
     elapsed_hours = (datetime.now() - last_dt).total_seconds() / 3600
 
     return elapsed_hours > DEADLINE_HOURS
+
+def send_alert():
+    requests.post(NTFY_TOPIC, data="You missed your check-in deadline!", headers={"Title":"Deadman Switch","Priority": "urgent"})
