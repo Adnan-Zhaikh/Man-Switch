@@ -1,30 +1,40 @@
-# Deadman Switch
+# Man-Switch
 
-A self-hosted accountability tool: check in periodically to log your progress on a goal. Miss your deadline, and it fires a push notification to your phone to let you know you've gone silent.
+A self-hosted journal and accountability tool. Check in regularly with a note about what happened or how a goal is going. If you go silent past your deadline, it sends an alert straight to your phone.
 
-Built as a learning project covering scheduling, background jobs, environment-based config, authentication, and deployment — not a toy script, an actual running service.
+<!-- Add a screenshot of the web UI here. -->
+
+## Why I built it
+
+I wanted one place to write down important events and dates, a private journal that is mine and runs on my own setup. Then I added the "switch" part: if I stop checking in, something should notice. That turned a simple notes app into a small running service.
 
 ## How it works
 
-- **FastAPI** backend exposes endpoints to check in and view history
-- **Postgres (Supabase)** stores every check-in as a timestamped row
-- **APScheduler** runs a background job on an interval, checking elapsed time since your last check-in
-- **ntfy** delivers a push notification to your phone when the deadline is missed
-- **HTTP Basic Auth** protects everything except a `/health` endpoint (used to keep the free-tier host awake)
-- A small **retro-styled web UI** replaces manually poking the API via Swagger docs
+1. You log a check-in with a note. Each one is saved with a timestamp.
+2. A background job runs on a schedule and checks how long it has been since your last check-in.
+3. If that time passes your deadline (48 hours by default), it pushes a notification to your phone.
 
-## Stack
+## What's inside
 
-- Python, FastAPI, Uvicorn
-- Supabase (Postgres) via `psycopg2`
-- APScheduler
-- ntfy.sh for notifications
-- Vanilla HTML/CSS/JS frontend (no build step)
-- Deployed on Render, kept alive via an external cron pinger (e.g. cron-job.org)
+- **FastAPI** backend with endpoints to check in and view history
+- **Postgres (Supabase)** to store every check-in
+- **APScheduler** for the background deadline check
+- **ntfy** for push notifications to my phone
+- **HTTP Basic Auth** to protect everything except `/health`
+- **A retro-styled web UI** in plain HTML, CSS, and JavaScript
+- **Render** for hosting, with an external cron pinger to keep it awake
 
-## Setup
+## What I learned
 
-### 1. Clone and install
+- **FastAPI:** building an API, defining routes, and serving a frontend from the same app.
+- **APScheduler:** running background jobs inside a web service. Scheduled work and web requests live in the same process, so if the host sleeps, the scheduler sleeps too.
+- **Keeping a free host awake:** Render's free tier spins down after about 15 minutes of no traffic. I fixed it with a public `/health` endpoint pinged every 10 minutes by cron-job.org.
+- **Environment-based config:** database URLs, passwords, and the notification topic all live in `.env` and are never committed.
+- **Authentication basics:** protecting routes with Basic Auth, and comparing credentials with `secrets.compare_digest` to avoid timing attacks.
+- **Working with Postgres:** connecting to Supabase through the connection pooler, because the direct connection is IPv6-only and many networks can't reach it.
+- **Deployment:** this is a running service, not a toy script.
+
+## Run it yourself
 
 ```bash
 git clone https://github.com/Adnan-Zhaikh/Man-Switch
@@ -34,76 +44,49 @@ source venv/bin/activate   # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 2. Set up ntfy
-
-1. Install the [ntfy app](https://ntfy.sh/) on your phone.
-2. Pick a private, hard-to-guess topic name.
-3. Subscribe to that topic in the app.
-
-### 3. Set up Supabase
-
-1. Create a free project at [supabase.com](https://supabase.com).
-2. Go to **Project Settings → Database → Connection Pooling** and copy the **Transaction pooler** connection string (not the direct connection — it's IPv6-only and unreachable from many networks).
-
-### 4. Configure environment variables
-
-Create a `.env` file in the project root:
+Create a `.env` file:
 
 ```
-DATABASE_URL=postgresql://postgres.<project-ref>:<password>@aws-0-<region>.pooler.supabase.com:6543/postgres
+DATABASE_URL=postgresql://...          # Supabase transaction pooler URL
 NTFY_TOPIC=your-private-topic-name
 BASIC_AUTH_USER=choose-a-username
 BASIC_AUTH_PASS=choose-a-strong-password
 ```
 
-**Never commit `.env`** — it's already listed in `.gitignore`.
-
-### 5. Run locally
+Then start it:
 
 ```bash
 python -m uvicorn main:app --reload
 ```
 
-Visit `http://127.0.0.1:8000/` and log in with the credentials you set above.
+Open `http://127.0.0.1:8000/` and log in. To get phone alerts, install the [ntfy app](https://ntfy.sh/) and subscribe to the same topic name.
 
-## Configuration
-
-In `scheduler.py`:
-
-- `DEADLINE_HOURS` — how long you can go without checking in before it counts as missed (default: 48)
-
-In `main.py`:
-
-- The scheduler's `interval` (in minutes) controls how often the deadline check runs. It doesn't need to be frequent relative to your deadline — every 15 minutes is plenty for a multi-day deadline.
-
-## Deployment (Render)
-
-1. Push this repo to GitHub (`.env` and `deadman.db`/local data stay out of it via `.gitignore`).
-2. Create a new **Web Service** on [Render](https://render.com), connected to your repo.
-3. Start command:
-   ```
-   uvicorn main:app --host 0.0.0.0 --port $PORT
-   ```
-4. Add all four environment variables from your `.env` in Render's dashboard.
-5. Deploy.
-
-Render's free tier spins down after ~15 minutes of no HTTP traffic — which would silently stop the background scheduler too. To prevent this, set up a free external cron service (e.g. [cron-job.org](https://cron-job.org)) to hit your app's `/health` endpoint every 10 minutes. `/health` requires no authentication, by design, so it's safe to ping publicly.
+**Settings:** the deadline is `DEADLINE_HOURS` in `scheduler.py`. How often the check runs is the scheduler interval in `main.py`.
 
 ## Endpoints
 
-| Route | Method | Auth | Purpose |
-|---|---|---|---|
+| Route | Method | Auth | What it does |
+| --- | --- | --- | --- |
 | `/` | GET | Yes | Serves the web UI |
-| `/checkin?note=...` | POST | Yes | Logs a new check-in with a progress note |
+| `/checkin?note=...` | POST | Yes | Logs a check-in with a note |
 | `/history` | GET | Yes | Returns all check-ins as JSON |
 | `/health` | GET | No | Used by the keepalive pinger |
 
 ## Security notes
 
-- Your ntfy topic name is effectively a shared secret — anyone who has it can read your notifications or trigger fake ones. Keep it out of version control.
-- Basic Auth credentials are compared using `secrets.compare_digest` to avoid timing attacks.
-- All secrets live in environment variables, never hardcoded.
+- Keep your ntfy topic name private. Anyone who has it can read or fake your notifications.
+- Never commit `.env`.
+- Notes are stored as plain text in the database and protected by Basic Auth. Don't store real passwords or other highly sensitive secrets in it.
+
+## Roadmap
+
+- [ ] **New UI:** a redesigned interface
+- [ ] **Photo support:** attach photos to important events
 
 ## License
 
-MIT — do whatever you want with it.
+MIT
+
+## Author
+
+**Adnan** — [@Adnan-Zhaikh](https://github.com/Adnan-Zhaikh)
