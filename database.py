@@ -23,13 +23,13 @@ def init_db():
     conn.commit()
     conn.close()
 
-def add_checkin(note):
+def add_checkin(note, category="journal", image_url=None):
     conn = get_conn()
     cursor = conn.cursor()
     timestamp = datetime.now(timezone.utc).isoformat()
     cursor.execute(
-        "INSERT INTO checkins (timestamp, progress_note) VALUES (%s, %s)",
-        (timestamp, note)
+        "INSERT INTO checkins (timestamp, progress_note, category, image_url) VALUES (%s, %s, %s, %s)",
+        (timestamp, note, category, image_url)
     )
     conn.commit()
     conn.close()
@@ -42,10 +42,16 @@ def get_last_checkin():
     conn.close()
     return result[0] if result else None
 
-def get_all_checkins():
+def get_all_checkins(category=None):
     conn = get_conn()
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM checkins ORDER BY timestamp DESC")
+    if category:
+        cursor.execute(
+            "SELECT * FROM checkins WHERE category = %s ORDER BY timestamp DESC",
+            (category,)
+        )
+    else:
+        cursor.execute("SELECT * FROM checkins ORDER BY timestamp DESC")
     result = cursor.fetchall()
     conn.close()
-    return result   
+    return result  
