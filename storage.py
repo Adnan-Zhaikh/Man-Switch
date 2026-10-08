@@ -1,5 +1,5 @@
-import os
 import uuid
+import os
 from dotenv import load_dotenv
 from supabase import create_client
 
@@ -18,4 +18,7 @@ def upload_image(file_bytes, content_type, category):
 
 def get_signed_url(path):
     response = sb.storage.from_("post-images").create_signed_url(path, 3600)
-    return response.signed_url
+    url = response["signedURL"]
+    if not url.startswith("https://"):
+        url = os.getenv("SUPABASE_URL") + url
+    return url   
