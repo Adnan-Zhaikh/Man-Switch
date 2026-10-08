@@ -2,7 +2,7 @@
 
 A self-hosted journal and accountability tool. Check in regularly with a note about what happened or how a goal is going. If you go silent past your deadline, it sends an alert straight to your phone.
 
-<!-- Add a screenshot of the web UI here. -->
+![UI with sections](image.png)
 
 ## Why I built it
 
