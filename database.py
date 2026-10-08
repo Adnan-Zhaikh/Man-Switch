@@ -15,7 +15,9 @@ def init_db():
         CREATE TABLE IF NOT EXISTS checkins (
             id SERIAL PRIMARY KEY,
             timestamp TEXT NOT NULL,
-            progress_note TEXT NOT NULL
+            progress_note TEXT NOT NULL,
+            image_url TEXT,
+            category TEXT NOT NULL DEFAULT 'journal'
         )
     ''')
     conn.commit()
