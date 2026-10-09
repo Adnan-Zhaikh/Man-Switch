@@ -1,40 +1,54 @@
-# Man-Switch
+# Man Switch
 
-A self-hosted journal and accountability tool. Check in regularly with a note about what happened or how a goal is going. If you go silent past your deadline, it sends an alert straight to your phone.
+A self-hosted accountability journal. You check in regularly with posts, optionally with photos. If you go quiet past your deadline, it sends a push alert straight to your phone.
 
-![UI with sections](image.png)
+<!-- Add screenshots: Journal page, Important page, dark and light mode. -->
 
 ## Why I built it
 
-I wanted one place to write down important events and dates, a private journal that is mine and runs on my own setup. Then I added the "switch" part: if I stop checking in, something should notice. That turned a simple notes app into a small running service.
+I wanted one private place to write down what's happening and keep things worth remembering, running on my own setup. Then I added the "switch" part: if I stop checking in, something should notice. That turned a simple notes app into a small running service.
+
+## What it does
+
+Posts live on three pages:
+
+- **Journal:** casual notes and day-to-day thoughts
+- **Tasks / Goals:** what I'm working on and what's next
+- **Important:** links, numbers, and notes worth keeping
+
+Any new post on any page resets the deadline clock. Posts can include a photo, uploaded from the gallery or straight from the camera. The UI has a different accent color for each page and a dark/light toggle.
+
+If the deadline passes (24 hours by default), ntfy sends a push alert to my phone. The alert repeats on every check until I post again.
 
 ## How it works
 
-1. You log a check-in with a note. Each one is saved with a timestamp.
-2. A background job runs on a schedule and checks how long it has been since your last check-in.
-3. If that time passes your deadline (48 hours by default), it pushes a notification to your phone.
+- **FastAPI** serves the API and the web UI.
+- **Postgres (Supabase)** stores every post with a timestamp and category.
+- **Supabase Storage** holds photos in a **private bucket**. The database stores only the file path, and the API creates short-lived signed URLs when a page loads.
+- **APScheduler** runs inside the app and checks every 15 minutes how long it has been since the last check-in.
+- **ntfy** delivers the push notification when the deadline is missed.
+- **HTTP Basic Auth** protects every route except `/health`.
+- **Frontend:** a single HTML/CSS/JS file, no framework and no build step.
 
-## What's inside
+## Stack
 
-- **FastAPI** backend with endpoints to check in and view history
-- **Postgres (Supabase)** to store every check-in
-- **APScheduler** for the background deadline check
-- **ntfy** for push notifications to my phone
-- **HTTP Basic Auth** to protect everything except `/health`
-- **A retro-styled web UI** in plain HTML, CSS, and JavaScript
-- **Render** for hosting, with an external cron pinger to keep it awake
+Python, FastAPI, Uvicorn, psycopg2, APScheduler, Supabase (Postgres + Storage), ntfy.sh, vanilla HTML/CSS/JS. Deployed on Render, kept awake by an external cron pinger.
 
 ## What I learned
 
-- **FastAPI:** building an API, defining routes, and serving a frontend from the same app.
-- **APScheduler:** running background jobs inside a web service. Scheduled work and web requests live in the same process, so if the host sleeps, the scheduler sleeps too.
-- **Keeping a free host awake:** Render's free tier spins down after about 15 minutes of no traffic. I fixed it with a public `/health` endpoint pinged every 10 minutes by cron-job.org.
-- **Environment-based config:** database URLs, passwords, and the notification topic all live in `.env` and are never committed.
-- **Authentication basics:** protecting routes with Basic Auth, and comparing credentials with `secrets.compare_digest` to avoid timing attacks.
-- **Working with Postgres:** connecting to Supabase through the connection pooler, because the direct connection is IPv6-only and many networks can't reach it.
-- **Deployment:** this is a running service, not a toy script.
+- **FastAPI:** routes, form and file uploads, and serving a frontend from the same app.
+- **APScheduler:** running background jobs inside a web service. The scheduler and the web server share one process, so if the host sleeps, the scheduler sleeps too.
+- **Keeping a free host awake:** Render's free tier spins down after about 15 minutes without traffic. I fixed it with a public `/health` endpoint pinged every 10 minutes by cron-job.org.
+- **Private file storage:** photos go in a private Supabase bucket, and the app hands out signed URLs that expire after an hour instead of public links.
+- **Validating uploads on the server:** checking the category, the image type (JPEG, PNG, WebP), and the size limit (5 MB) before accepting anything.
+- **Environment-based config:** database URLs, passwords, keys, and the notification topic all live in `.env` and are never committed.
+- **Authentication basics:** Basic Auth, with credentials compared using `secrets.compare_digest` to avoid timing attacks.
+- **Postgres through Supabase:** using the connection pooler, because the direct connection is IPv6-only and many networks can't reach it.
+- **Deployment:** a real running service, not a toy script.
 
 ## Run it yourself
+
+### 1. Clone and install
 
 ```bash
 git clone https://github.com/Adnan-Zhaikh/Man-Switch
@@ -44,44 +58,90 @@ source venv/bin/activate   # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-Create a `.env` file:
+`requirements.txt` needs at least: `fastapi`, `uvicorn`, `psycopg2-binary`, `python-dotenv`, `apscheduler`, `requests`, `supabase`, `python-multipart`.
+
+### 2. ntfy
+
+1. Install the [ntfy app](https://ntfy.sh/) on your phone.
+2. Pick a private, hard-to-guess topic name and subscribe to it.
+3. Your `NTFY_TOPIC` value is the full URL, for example `https://ntfy.sh/your-topic-name`.
+
+### 3. Supabase
+
+1. Create a free project at [supabase.com](https://supabase.com).
+2. **Database:** copy the **Transaction pooler** connection string (Project Settings → Database). Don't use the direct connection.
+3. **Storage:** create a bucket named `post-images` with **Public bucket turned off**. Optionally limit it to `image/jpeg`, `image/png`, `image/webp` and 5 MB.
+4. **API keys:** copy your Project URL (just `https://<ref>.supabase.co`, nothing after `.co`) and a **secret key** (Project Settings → API Keys).
+5. The app can create the table on first start. If your table is from an older version, add the new columns:
+
+```sql
+ALTER TABLE checkins ADD COLUMN IF NOT EXISTS image_url TEXT;
+ALTER TABLE checkins ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT 'journal';
+```
+
+### 4. Environment variables
+
+Create a `.env` file in the project root:
 
 ```
-DATABASE_URL=postgresql://...          # Supabase transaction pooler URL
-NTFY_TOPIC=your-private-topic-name
+DATABASE_URL=postgresql://postgres.<project-ref>:<password>@aws-0-<region>.pooler.supabase.com:6543/postgres
+NTFY_TOPIC=https://ntfy.sh/your-private-topic
 BASIC_AUTH_USER=choose-a-username
 BASIC_AUTH_PASS=choose-a-strong-password
+SUPABASE_URL=https://<project-ref>.supabase.co
+SUPABASE_SERVICE_KEY=sb_secret_...
 ```
 
-Then start it:
+`.env` must stay out of version control. The Supabase secret key bypasses all access rules, so treat it like a database password.
+
+### 5. Run locally
 
 ```bash
 python -m uvicorn main:app --reload
 ```
 
-Open `http://127.0.0.1:8000/` and log in. To get phone alerts, install the [ntfy app](https://ntfy.sh/) and subscribe to the same topic name.
+Open `http://127.0.0.1:8000/` and log in with your Basic Auth credentials.
 
-**Settings:** the deadline is `DEADLINE_HOURS` in `scheduler.py`. How often the check runs is the scheduler interval in `main.py`.
+## Configuration
+
+- `scheduler.py`: `DEADLINE_HOURS` is how long you can go without checking in (24 by default).
+- `main.py`: the scheduler interval (15 minutes by default) controls how often the check runs.
 
 ## Endpoints
 
-| Route | Method | Auth | What it does |
+| Route | Method | Auth | Purpose |
 | --- | --- | --- | --- |
 | `/` | GET | Yes | Serves the web UI |
-| `/checkin?note=...` | POST | Yes | Logs a check-in with a note |
-| `/history` | GET | Yes | Returns all check-ins as JSON |
+| `/checkin` | POST | Yes | Creates a post. Multipart form: `note`, `category` (`journal`, `important` or `task`), optional `image` |
+| `/history?category=` | GET | Yes | Returns posts, newest first, as JSON. Optional category filter. Image paths are replaced with signed URLs |
 | `/health` | GET | No | Used by the keepalive pinger |
+
+## Deployment (Render)
+
+1. Push the repo to GitHub, with `.env` ignored.
+2. Create a **Web Service** on [Render](https://render.com) from the repo.
+3. Start command: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+4. Add all six environment variables in Render's Environment tab.
+5. Set up a free external cron service such as [cron-job.org](https://cron-job.org) to request `/health` every 10 minutes, so the free tier doesn't sleep and stop the scheduler.
 
 ## Security notes
 
-- Keep your ntfy topic name private. Anyone who has it can read or fake your notifications.
-- Never commit `.env`.
-- Notes are stored as plain text in the database and protected by Basic Auth. Don't store real passwords or other highly sensitive secrets in it.
+- Everything is stored as plain text in the database. Don't keep real passwords on the Important page; use a password manager. Links, numbers, and notes are fine.
+- The ntfy topic URL works like a shared secret. Anyone who has it can read your alerts or send fake ones.
+- Photos sit in a private bucket. Signed URLs expire after an hour, but anyone holding a live link can view that photo until then.
+- Timestamps are stored in UTC, and the browser converts them to local time.
+- The `Content-Type` of an uploaded file is declared by the client. It is checked, but the file contents are not inspected.
+
+## Known limitations
+
+- No way to edit or delete entries from the UI yet. A `DELETE` route would also need to remove the photo from storage and decide how the deadline behaves if the newest entry is removed.
+- Single user only.
 
 ## Roadmap
 
-- [ ] **New UI:** a redesigned interface
-- [ ] **Photo support:** attach photos to important events
+- [ ] Edit and delete entries
+- [ ] Calendar and stats views
+- [ ] Tabs inside the Important page
 
 ## License
 
