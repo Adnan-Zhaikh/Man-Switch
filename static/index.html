@@ -43,11 +43,25 @@ textarea:focus{outline:none}
 #post{background:var(--ac);color:var(--ak);border:0;border-radius:20px;padding:9px 20px;font:inherit;font-weight:700;cursor:pointer}
 #post:disabled{opacity:.45;cursor:default}
 #msg{font-size:13px;color:var(--ac);min-height:18px;margin-top:6px}
-.card{background:var(--sf);border:1px solid var(--ln);border-radius:14px;padding:14px 16px;margin-bottom:12px}
-.meta{font-size:13px;color:var(--mu);margin-bottom:6px}
+.card{background:var(--sf);border:1px solid var(--ln);border-radius:14px;padding:14px 16px;margin-bottom:12px;position:relative}
+.meta{font-size:13px;color:var(--mu);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center}
+.card-actions{display:flex;gap:8px}
+.card-btn{background:none;border:0;border-radius:6px;color:var(--mu);font:inherit;font-size:12px;cursor:pointer;padding:4px 8px;border:1px solid var(--ln)}
+.card-btn:hover{color:var(--ac);border-color:var(--ac)}
 .note{white-space:pre-wrap;word-wrap:break-word;margin:0;font-size:16px}
 .card img{display:block;width:100%;max-height:400px;object-fit:cover;border-radius:12px;margin-top:10px}
 .empty{padding:40px 16px;text-align:center;color:var(--mu);font-family:var(--serif);font-size:17px}
+.modal{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);z-index:100;align-items:center;justify-content:center}
+.modal.active{display:flex}
+.modal-content{background:var(--sf);border:1px solid var(--ln);border-radius:16px;padding:22px;max-width:500px;width:90%;max-height:85vh;overflow-y:auto}
+.modal-content h2{font-family:var(--serif);font-size:28px;margin:0 0 16px;color:var(--ac)}
+.modal-content textarea{margin-bottom:12px}
+.modal-content select{width:100%;border:1px solid var(--ln);border-radius:8px;background:var(--bg);color:var(--tx);padding:8px 12px;font:inherit;margin-bottom:12px}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end}
+.modal-btn{background:none;border:1px solid var(--ln);border-radius:10px;color:var(--mu);padding:8px 16px;font:inherit;cursor:pointer}
+.modal-btn:hover{color:var(--ac);border-color:var(--ac)}
+.modal-btn.save{background:var(--ac);color:var(--ak);border:0;font-weight:700}
+.modal-btn.save:disabled{opacity:.45;cursor:default}
 @media (max-width:759px){
   .app{display:block}
   .side{position:fixed;top:auto;bottom:0;left:0;right:0;height:auto;padding:0 0 env(safe-area-inset-bottom);border:0;border-top:1px solid var(--ln);background:var(--sf);z-index:9}
@@ -94,13 +108,39 @@ textarea:focus{outline:none}
   </main>
 </div>
 
+<!-- Edit Modal -->
+<div id="editModal" class="modal">
+  <div class="modal-content">
+    <h2>Edit Entry</h2>
+    <textarea id="editNote" maxlength="2000" style="width:100%;border:1px solid var(--ln);border-radius:8px;padding:8px;background:var(--bg);color:var(--tx);font:inherit;min-height:100px;resize:none"></textarea>
+    <select id="editCategory">
+      <option value="journal">Journal</option>
+      <option value="task">Tasks / Goals</option>
+      <option value="important">Important</option>
+    </select>
+    <div id="editPreview" style="position:relative;margin:12px 0;display:none">
+      <img id="editPreviewImg" alt="Current photo" style="width:100%;max-height:250px;object-fit:cover;border-radius:8px">
+      <button id="editRemoveImg" type="button" aria-label="Remove photo" style="position:absolute;top:8px;right:8px;border:0;border-radius:50%;width:30px;height:30px;background:rgba(0,0,0,.65);color:#fff;font-size:16px;cursor:pointer">&times;</button>
+    </div>
+    <button class="ic" id="editGal" type="button" style="width:100%;margin-bottom:8px">Replace Photo (Gallery)</button>
+    <button class="ic" id="editCam" type="button" style="width:100%;margin-bottom:12px">Replace Photo (Camera)</button>
+    <input type="file" id="editFGal" accept="image/jpeg,image/png,image/webp" hidden>
+    <input type="file" id="editFCam" accept="image/*" capture="environment" hidden>
+    <div id="editMsg" style="font-size:13px;color:var(--ac);min-height:18px;margin-bottom:12px"></div>
+    <div class="modal-actions">
+      <button class="modal-btn" id="editCancel">Cancel</button>
+      <button class="modal-btn save" id="editSave">Save</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const COPY = {
   journal:{t:"Journal",s:"Your thoughts, progress and everything in between.",ph:"What's on your mind today?",hint:""},
   task:{t:"Tasks / Goals",s:"Turn your plans into progress.",ph:"What are you working on, and what's next?",hint:""},
   important:{t:"Important saved",s:"Your links, notes and important stuff in one place.",ph:"Save a link, number or note",hint:"Keep real passwords in a password manager, not here."}
 };
-let page = "journal", file = null;
+let page = "journal", file = null, editingId = null, editFile = null;
 const $ = id => document.getElementById(id);
 const root = document.documentElement;
 
@@ -108,7 +148,7 @@ function esc(s){const d=document.createElement("div");d.textContent=s;return d.i
 function when(iso){
   const d=new Date(iso);
   if(isNaN(d))return "";
-  return d.toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"})+" \u00b7 "+d.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"});
+  return d.toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"})+" · "+d.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"});
 }
 
 /* theme: dark by default to match the reference; the toggle switches to light */
@@ -144,16 +184,110 @@ async function loadFeed(){
     const r=await fetch("/history?category="+mine);
     if(!r.ok)throw new Error();
     const rows=await r.json();
-    if(mine!==page)return; /* user switched tabs while this was loading */
+    if(mine!==page)return;
     if(!rows.length){$("feed").innerHTML='<div class="empty">Nothing here yet. Write your first entry above.</div>';return}
     $("feed").innerHTML=rows.map(p=>`
-      <article class="card">
-        <div class="meta">${esc(when(p.timestamp))}</div>
+      <article class="card" data-id="${p.id}">
+        <div class="meta">
+          <span>${esc(when(p.timestamp))}</span>
+          <div class="card-actions">
+            <button class="card-btn edit-btn" data-id="${p.id}">Edit</button>
+            <button class="card-btn delete-btn" data-id="${p.id}">Delete</button>
+          </div>
+        </div>
         <p class="note">${esc(p.progress_note)}</p>
         ${p.image_url?`<img src="${esc(p.image_url)}" alt="Attached photo" loading="lazy">`:""}
       </article>`).join("");
+    
+    document.querySelectorAll(".edit-btn").forEach(btn=>{
+      btn.onclick=()=>openEditModal(parseInt(btn.dataset.id));
+    });
+    document.querySelectorAll(".delete-btn").forEach(btn=>{
+      btn.onclick=()=>deleteEntry(parseInt(btn.dataset.id));
+    });
   }catch(e){
     $("feed").innerHTML='<div class="empty">Couldn\'t load entries. Refresh to try again.</div>';
+  }
+}
+
+/* modal */
+function openEditModal(id){
+  const card = document.querySelector(`[data-id="${id}"]`);
+  const note = card.querySelector(".note").textContent;
+  const img = card.querySelector("img");
+  
+  editingId = id;
+  editFile = null;
+  $("editNote").value = note;
+  $("editMsg").textContent = "";
+  
+  if(img){
+    $("editPreview").style.display = "block";
+    $("editPreviewImg").src = img.src;
+  } else {
+    $("editPreview").style.display = "none";
+  }
+  
+  $("editModal").classList.add("active");
+}
+
+function closeEditModal(){
+  $("editModal").classList.remove("active");
+  editingId = null;
+  editFile = null;
+}
+
+$("editCancel").onclick = closeEditModal;
+
+function pickEditFile(f){
+  if(!f)return;
+  if(f.size>5*1024*1024){$("editMsg").textContent="That photo is over 5 MB. Pick a smaller one.";return}
+  editFile=f;
+  $("editPreviewImg").src=URL.createObjectURL(f);
+  $("editPreview").style.display="block";
+  $("editMsg").textContent="";
+}
+
+$("editGal").onclick=()=>$("editFGal").click();
+$("editCam").onclick=()=>$("editFCam").click();
+$("editFGal").onchange=e=>{pickEditFile(e.target.files[0]);e.target.value=""};
+$("editFCam").onchange=e=>{pickEditFile(e.target.files[0]);e.target.value=""};
+$("editRemoveImg").onclick=()=>{editFile=null;$("editPreview").style.display="none"};
+
+$("editSave").onclick=async()=>{
+  const note=$("editNote").value.trim();
+  if(!note){$("editMsg").textContent="Write something first.";return}
+  
+  const fd=new FormData();
+  fd.append("note",note);
+  fd.append("category",$("editCategory").value);
+  if(editFile)fd.append("image",editFile);
+  
+  $("editSave").disabled=true;
+  $("editMsg").textContent="Saving...";
+  
+  try{
+    const r=await fetch(`/checkin/${editingId}`,{method:"PUT",body:fd});
+    if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.detail||"Update failed")}
+    $("editMsg").textContent="Updated.";
+    await loadFeed();
+    closeEditModal();
+  }catch(e){
+    $("editMsg").textContent=e.message||"Update failed. Try again.";
+  }finally{
+    $("editSave").disabled=false;
+  }
+};
+
+/* delete */
+async function deleteEntry(id){
+  if(!confirm("Are you sure? This cannot be undone."))return;
+  try{
+    const r=await fetch(`/checkin/${id}`,{method:"DELETE"});
+    if(!r.ok)throw new Error("Delete failed");
+    await loadFeed();
+  }catch(e){
+    alert("Failed to delete: "+(e.message||"Try again"));
   }
 }
 
