@@ -21,4 +21,15 @@ def get_signed_url(path):
     url = response["signedURL"]
     if not url.startswith("https://"):
         url = os.getenv("SUPABASE_URL") + url
-    return url   
+    return url
+
+def delete_image(path):
+    """Delete an image from Supabase Storage."""
+    if not path:
+        return True
+    try:
+        sb.storage.from_("post-images").remove([path])
+        return True
+    except Exception as e:
+        print(f"Failed to delete image {path}: {e}")
+        return False
