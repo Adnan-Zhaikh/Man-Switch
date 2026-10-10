@@ -1,12 +1,12 @@
 # Man Switch
 
-A self-hosted accountability journal. You check in regularly with posts, optionally with photos. If you go quiet past your deadline, it sends a push alert straight to your phone.
+A self-hosted accountability journal. You check in regularly with posts, optionally with photos. If you go quiet past your deadline, it sends a push alert straight to your phone. Full CRUD support—create, read, edit, and delete entries anytime.
 
 <!-- Add screenshots: Journal page, Important page, dark and light mode. -->
 
 ## Why I built it
 
-I wanted one private place to write down what's happening and keep things worth remembering, running on my own setup. Then I added the "switch" part: if I stop checking in, something should notice. That turned a simple notes app into a small running service.
+I wanted one private place to write down what's happening and keep things worth remembering, running on my own setup. Then I added the "switch" part: if I stop checking in, something should notice.
 
 ## What it does
 
@@ -16,9 +16,11 @@ Posts live on three pages:
 - **Tasks / Goals:** what I'm working on and what's next
 - **Important:** links, numbers, and notes worth keeping
 
-Any new post on any page resets the deadline clock. Posts can include a photo, uploaded from the gallery or straight from the camera. The UI has a different accent color for each page and a dark/light toggle.
+Any new post on any page resets the deadline clock. Posts can include a photo, uploaded from the gallery or straight from the camera. The UI has a different accent color for each page and a dark/light mode toggle.
 
-If the deadline passes (24 hours by default), ntfy sends a push alert to my phone. The alert repeats on every check until I post again.
+If the deadline passes (24 hours by default), ntfy sends a push alert to your phone. The alert repeats on every check until you post again.
+
+**Edit & Delete:** Click the Edit or Delete button on any card to modify or remove an entry. Editing opens a modal where you can change the text, category, and optionally replace the photo. Deleting removes the entry and cleans up its image from storage.
 
 ## How it works
 
@@ -45,6 +47,7 @@ Python, FastAPI, Uvicorn, psycopg2, APScheduler, Supabase (Postgres + Storage), 
 - **Authentication basics:** Basic Auth, with credentials compared using `secrets.compare_digest` to avoid timing attacks.
 - **Postgres through Supabase:** using the connection pooler, because the direct connection is IPv6-only and many networks can't reach it.
 - **Deployment:** a real running service, not a toy script.
+- **Full CRUD in FastAPI:** building PUT and DELETE endpoints with proper validation and cascading deletes for related files.
 
 ## Run it yourself
 
@@ -113,6 +116,8 @@ Open `http://127.0.0.1:8000/` and log in with your Basic Auth credentials.
 | --- | --- | --- | --- |
 | `/` | GET | Yes | Serves the web UI |
 | `/checkin` | POST | Yes | Creates a post. Multipart form: `note`, `category` (`journal`, `important` or `task`), optional `image` |
+| `/checkin/{id}` | PUT | Yes | Updates a post. Multipart form: `note`, `category`, optional `image`. If `image` is not provided, the old image is preserved. |
+| `/checkin/{id}` | DELETE | Yes | Deletes a post and its associated image from storage |
 | `/history?category=` | GET | Yes | Returns posts, newest first, as JSON. Optional category filter. Image paths are replaced with signed URLs |
 | `/health` | GET | No | Used by the keepalive pinger |
 
@@ -134,14 +139,71 @@ Open `http://127.0.0.1:8000/` and log in with your Basic Auth credentials.
 
 ## Known limitations
 
-- No way to edit or delete entries from the UI yet. A `DELETE` route would also need to remove the photo from storage and decide how the deadline behaves if the newest entry is removed.
 - Single user only.
 
 ## Roadmap
 
-- [ ] Edit and delete entries
-- [ ] Calendar and stats views
+- [x] Edit and delete entries
+- [ ] Calendar and stats views (streak counter, check-in frequency, entries per category)
 - [ ] Tabs inside the Important page
+- [ ] Full-text search across all entries
+- [ ] Export entries as JSON or CSV
+- [ ] Recurring checkins or templates (quick-add buttons)
+- [ ] Tags or labels on entries for better organization
+- [ ] Weekly or monthly digest view
+- [ ] Bulk operations (delete multiple, archive old entries)
+- [ ] Optional notes on why an entry was edited/deleted
+- [ ] Custom deadline per category (different alert times for journal vs. tasks)
+- [ ] Multiple users (auth per user, private entries)
+- [ ] Voice notes or transcription (in addition to photos)
+- [ ] Syncing to external services (email digest, webhook, IFTTT)
+
+## Feature Ideas
+
+Here are additional features you could add to make Man-Switch even more powerful:
+
+### Analytics & Insights
+- **Streak counter:** Display how many days in a row you've checked in
+- **Statistics dashboard:** posts per category, busiest time of day, check-in frequency
+- **Heat map calendar:** visual representation of check-in patterns
+- **Word cloud:** most-used words in your entries
+
+### Organization
+- **Full-text search:** find entries by keyword
+- **Tags/labels:** attach tags to entries and filter by them
+- **Archived entries:** soft-delete old entries without losing data
+- **Bulk operations:** delete/archive multiple entries at once
+
+### Reminders & Motivation
+- **Custom deadlines per category:** e.g., journal every 24h, tasks every 12h
+- **Motivational tips:** random encouraging messages on the page
+- **Check-in streak badges:** visual reward for consistency
+- **Email digest:** weekly summary of your entries
+
+### Export & Sync
+- **Export to JSON/CSV:** backup or migrate your data
+- **Email digest:** weekly or monthly summary sent to your inbox
+- **Webhook integration:** send new entries to Discord, Slack, or other services
+- **IFTTT support:** trigger actions based on check-ins
+
+### Content
+- **Templates/quick-add buttons:** pre-fill entry forms for common check-ins
+- **Voice notes:** record audio instead of typing (with optional transcription)
+- **File attachments:** beyond just images (PDFs, documents)
+- **Markdown support:** format entries with bold, lists, code blocks
+
+### Collaboration (Future)
+- **Multi-user support:** separate accounts with private entries
+- **Shared goals:** invite friends to check in together
+- **Comment/react on entries:** like and comment on past posts
+
+### Customization
+- **Custom colors and themes:** more theme options beyond light/dark
+- **Custom categories:** create your own page names
+- **Notification customization:** choose alert frequency and channels
+- **Data retention policy:** auto-delete old entries after X days
+
+Start with **statistics** or **search** if you want quick wins. **Export** is useful for data portability. **Multi-user support** is the biggest architectural change but opens the app up to teams.
 
 ## License
 
