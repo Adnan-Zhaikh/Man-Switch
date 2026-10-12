@@ -126,7 +126,23 @@ def history(category: str = None):
         results.append(item)
     return results
 
+@app.get("/manifest.json")
+def manifest():
+    return FileResponse("static/manifest.json", media_type="application/manifest+json")
 
+@app.get("/sw.js")
+def sw():
+    return FileResponse("static/sw.js", media_type="application/javascript")
+
+@app.get("/icon-192.png")
+def icon192():
+    return FileResponse("static/icon-192.png")
+
+@app.get("/icon-512.png")
+def icon512():
+    return FileResponse("static/icon-512.png")
+
+    
 @app.get("/", dependencies=[Depends(verify_credentials)])
 def serve_ui():
     return FileResponse("static/index.html")   

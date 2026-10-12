@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Man Switch</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#120c1e">
+<link rel="icon" href="/icon-192.png">
 <style>
 :root{--serif:Georgia,"Times New Roman",serif;--sans:system-ui,-apple-system,"Segoe UI",sans-serif}
 /* each page has its own accent, taken from the reference: violet, mint, orange */
@@ -330,6 +333,9 @@ $("post").onclick=async()=>{
 };
 
 showPage("journal");
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.register("/sw.js").catch(()=>{});
+}
 </script>
 </body>
 </html>
