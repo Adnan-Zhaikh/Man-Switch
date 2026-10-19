@@ -1,28 +1,62 @@
 import os
 import secrets
+
+from dotenv import load_dotenv
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
-# Load .env into os.environ (call once at the top of main.py)
-from dotenv import load_dotenv
 load_dotenv()
 
 security = HTTPBasic()
 
-def verify_credentials(credentials: HTTPBasicCredentials = Depends(security)):
-    current_username_bytes = credentials.username.encode("utf-8")
-    correct_username_bytes = os.getenv("BASIC_AUTH_USER").encode("utf-8")
+# Load users from .env
+USERS = {}
 
-    current_password_bytes = credentials.password.encode("utf-8")
-    correct_password_bytes = os.getenv("BASIC_AUTH_PASS").encode("utf-8")
+i = 1
+while True:
+    username = os.getenv(f"BASIC_AUTH_USER_{i}")
+    password = os.getenv(f"BASIC_AUTH_PASS_{i}")
 
-    is_correct_username = secrets.compare_digest(current_username_bytes, correct_username_bytes)
-    is_correct_password = secrets.compare_digest(current_password_bytes, correct_password_bytes)
+    if username is None and password is None:
+        break
 
-    if not (is_correct_username and is_correct_password):
+    if not username or not password:
+        raise RuntimeError(f"Missing username or password for user {i}")
+
+    if username in USERS:
+        raise RuntimeError(f"Duplicate username: {username}")
+
+    USERS[username] = password
+    i += 1
+
+if not USERS:
+    raise RuntimeError("No users configured in .env")
+
+
+def verify_credentials(
+    credentials: HTTPBasicCredentials = Depends(security),
+):
+    authenticated = False
+
+    for username, password in USERS.items():
+        is_correct_username = secrets.compare_digest(
+            credentials.username.encode("utf-8"),
+            username.encode("utf-8"),
+        )
+
+        is_correct_password = secrets.compare_digest(
+            credentials.password.encode("utf-8"),
+            password.encode("utf-8"),
+        )
+
+        if is_correct_username and is_correct_password:
+            authenticated = True
+
+    if not authenticated:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Basic"},
         )
-    return credentials.username   
+
+    return credentials.username
