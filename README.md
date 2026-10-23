@@ -29,7 +29,7 @@ If the deadline passes (24 hours by default), ntfy sends a push alert to your ph
 - **Supabase Storage** holds photos in a **private bucket**. The database stores only the file path, and the API creates short-lived signed URLs when a page loads.
 - **APScheduler** runs inside the app and checks every 15 minutes how long it has been since the last check-in.
 - **ntfy** delivers the push notification when the deadline is missed.
-- **HTTP Basic Auth** protects every route except `/health`.
+- **Session auth** with register/login/logout keeps each account isolated.
 - **Frontend:** a single HTML/CSS/JS file, no framework and no build step.
 
 ## Stack
@@ -44,7 +44,7 @@ Python, FastAPI, Uvicorn, psycopg2, APScheduler, Supabase (Postgres + Storage), 
 - **Private file storage:** photos go in a private Supabase bucket, and the app hands out signed URLs that expire after an hour instead of public links.
 - **Validating uploads on the server:** checking the category, the image type (JPEG, PNG, WebP), and the size limit (5 MB) before accepting anything.
 - **Environment-based config:** database URLs, passwords, keys, and the notification topic all live in `.env` and are never committed.
-- **Authentication basics:** Basic Auth, with credentials compared using `secrets.compare_digest` to avoid timing attacks.
+- **Authentication basics:** session cookies + PBKDF2 password hashing for account login.
 - **Postgres through Supabase:** using the connection pooler, because the direct connection is IPv6-only and many networks can't reach it.
 - **Deployment:** a real running service, not a toy script.
 - **Full CRUD in FastAPI:** building PUT and DELETE endpoints with proper validation and cascading deletes for related files.
@@ -75,11 +75,12 @@ pip install -r requirements.txt
 2. **Database:** copy the **Transaction pooler** connection string (Project Settings → Database). Don't use the direct connection.
 3. **Storage:** create a bucket named `post-images` with **Public bucket turned off**. Optionally limit it to `image/jpeg`, `image/png`, `image/webp` and 5 MB.
 4. **API keys:** copy your Project URL (just `https://<ref>.supabase.co`, nothing after `.co`) and a **secret key** (Project Settings → API Keys).
-5. The app can create the table on first start. If your table is from an older version, add the new columns:
+5. The app creates/updates tables on first start (`users`, `checkins`, and ownership indexes). If your table is from an older version, these are the key compatibility columns:
 
 ```sql
 ALTER TABLE checkins ADD COLUMN IF NOT EXISTS image_url TEXT;
 ALTER TABLE checkins ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT 'journal';
+ALTER TABLE checkins ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
 ```
 
 ### 4. Environment variables
@@ -89,11 +90,26 @@ Create a `.env` file in the project root:
 ```
 DATABASE_URL=postgresql://postgres.<project-ref>:<password>@aws-0-<region>.pooler.supabase.com:6543/postgres
 NTFY_TOPIC=https://ntfy.sh/your-private-topic
-BASIC_AUTH_USER=choose-a-username
-BASIC_AUTH_PASS=choose-a-strong-password
+SESSION_SECRET=generate-a-long-random-secret
 SUPABASE_URL=https://<project-ref>.supabase.co
 SUPABASE_SERVICE_KEY=sb_secret_...
 ```
+
+Optional:
+
+```
+SESSION_MAX_AGE_SECONDS=43200
+SESSION_HTTPS_ONLY=true
+```
+
+Legacy single-user upgrade compatibility (optional):
+
+```
+BASIC_AUTH_USER=old-username
+BASIC_AUTH_PASS=old-password
+```
+
+If no users exist yet, these legacy values are used one time to bootstrap the first account and migrate unowned check-ins.
 
 `.env` must stay out of version control. The Supabase secret key bypasses all access rules, so treat it like a database password.
 
@@ -103,7 +119,7 @@ SUPABASE_SERVICE_KEY=sb_secret_...
 python -m uvicorn main:app --reload
 ```
 
-Open `http://127.0.0.1:8000/` and log in with your Basic Auth credentials.
+Open `http://127.0.0.1:8000/` and register a new account (or log in).
 
 ## Configuration
 
@@ -114,11 +130,15 @@ Open `http://127.0.0.1:8000/` and log in with your Basic Auth credentials.
 
 | Route | Method | Auth | Purpose |
 | --- | --- | --- | --- |
-| `/` | GET | Yes | Serves the web UI |
+| `/` | GET | No | Serves the web UI (login/register + app) |
+| `/auth/register` | POST | No | Registers a new account and starts a session (`username`, `password`, `confirm_password`, optional `ntfy_topic`) |
+| `/auth/login` | POST | No | Starts a session (`username`, `password`) |
+| `/auth/logout` | POST | No | Clears the active session |
+| `/auth/me` | GET | Session | Returns current authenticated user |
 | `/checkin` | POST | Yes | Creates a post. Multipart form: `note`, `category` (`journal`, `important` or `task`), optional `image` |
 | `/checkin/{id}` | PUT | Yes | Updates a post. Multipart form: `note`, `category`, optional `image`. If `image` is not provided, the old image is preserved. |
 | `/checkin/{id}` | DELETE | Yes | Deletes a post and its associated image from storage |
-| `/history?category=` | GET | Yes | Returns posts, newest first, as JSON. Optional category filter. Image paths are replaced with signed URLs |
+| `/history?category=` | GET | Session | Returns only the current user's posts, newest first. Optional category filter. Image paths are replaced with signed URLs |
 | `/health` | GET | No | Used by the keepalive pinger |
 
 ## Deployment (Render)
@@ -139,7 +159,7 @@ Open `http://127.0.0.1:8000/` and log in with your Basic Auth credentials.
 
 ## Known limitations
 
-- Single user only.
+- APScheduler runs in-process; if the host sleeps, deadline checks pause.
 
 ## Roadmap
 
@@ -154,7 +174,7 @@ Open `http://127.0.0.1:8000/` and log in with your Basic Auth credentials.
 - [ ] Bulk operations (delete multiple, archive old entries)
 - [ ] Optional notes on why an entry was edited/deleted
 - [ ] Custom deadline per category (different alert times for journal vs. tasks)
-- [ ] Multiple users (auth per user, private entries)
+- [x] Multiple users (auth per user, private entries)
 - [ ] Voice notes or transcription (in addition to photos)
 - [ ] Syncing to external services (email digest, webhook, IFTTT)
 
