@@ -9,7 +9,6 @@
 <link rel="icon" href="/icon-192.png">
 <style>
 :root{--serif:Georgia,"Times New Roman",serif;--sans:system-ui,-apple-system,"Segoe UI",sans-serif}
-/* each page has its own accent, taken from the reference: violet, mint, orange */
 :root[data-theme="dark"][data-page="journal"]{--bg:#120c1e;--sf:#1b1330;--ln:#322350;--ac:#b08cf6;--ak:#1b0d33;--mu:#9a8db5;--tx:#ece6f8}
 :root[data-theme="dark"][data-page="task"]{--bg:#0a1512;--sf:#10211d;--ln:#1f3d35;--ac:#5fd9a8;--ak:#06231a;--mu:#82a89c;--tx:#e4f4ee}
 :root[data-theme="dark"][data-page="important"]{--bg:#140e0b;--sf:#1f1511;--ln:#43291d;--ac:#f08a4b;--ak:#2a1204;--mu:#b39685;--tx:#f6ebe4}
@@ -18,6 +17,19 @@
 :root[data-theme="light"][data-page="important"]{--bg:#fdf4ee;--sf:#fff;--ln:#f1d9c8;--ac:#bf4f12;--ak:#fff;--mu:#94705a;--tx:#33180a}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--tx);font-family:var(--sans);line-height:1.5;transition:background .2s}
+.hidden{display:none!important}
+#authShell{max-width:460px;margin:8vh auto 0;padding:0 16px}
+.auth-card{background:var(--sf);border:1px solid var(--ln);border-radius:16px;padding:18px}
+.auth-card h1{font-family:var(--serif);font-size:34px;margin:0 0 6px;color:var(--ac)}
+.auth-sub{color:var(--mu);margin:0 0 16px}
+.auth-tabs{display:flex;gap:8px;margin-bottom:14px}
+.auth-tabs button{flex:1;border:1px solid var(--ln);background:none;color:var(--mu);border-radius:10px;padding:8px 12px;cursor:pointer}
+.auth-tabs button.on{color:var(--ac);border-color:var(--ac)}
+.auth-field{margin-bottom:10px}
+.auth-field label{display:block;font-size:13px;color:var(--mu);margin-bottom:4px}
+.auth-field input{width:100%;border:1px solid var(--ln);border-radius:10px;padding:10px 12px;background:var(--bg);color:var(--tx);font:inherit}
+#authSubmit{width:100%;background:var(--ac);color:var(--ak);border:0;border-radius:20px;padding:10px 14px;font:inherit;font-weight:700;cursor:pointer}
+#authMsg{min-height:20px;color:var(--ac);font-size:13px;margin-top:10px}
 .app{display:grid;grid-template-columns:210px 1fr;max-width:920px;margin:0 auto;min-height:100vh}
 .side{position:sticky;top:0;height:100vh;padding:26px 14px;border-right:1px solid var(--ln)}
 .brand{font-family:var(--serif);font-size:22px;color:var(--ac);padding:0 10px 14px}
@@ -25,12 +37,13 @@ nav{display:flex;flex-direction:column;gap:6px}
 nav button{background:none;border:0;border-radius:10px;color:var(--mu);font:inherit;font-size:15px;text-align:left;padding:11px 12px;cursor:pointer}
 nav button.on{color:var(--ac);font-weight:700;background:color-mix(in srgb,var(--ac) 15%,transparent)}
 main{padding:24px 22px;max-width:660px;width:100%}
-.top{display:flex;justify-content:space-between;align-items:center}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .mbrand{display:none;font-family:var(--serif);font-size:20px;color:var(--ac)}
-#themeBtn{margin-left:auto;background:none;border:1px solid var(--ln);color:var(--mu);border-radius:18px;padding:5px 13px;font:inherit;font-size:13px;cursor:pointer}
+#userBadge{font-size:13px;color:var(--mu)}
+#logoutBtn,#themeBtn{background:none;border:1px solid var(--ln);color:var(--mu);border-radius:18px;padding:5px 13px;font:inherit;font-size:13px;cursor:pointer}
 h1{font-family:var(--serif);font-weight:400;font-size:40px;line-height:1.1;margin:10px 0 6px;color:var(--ac)}
 .sub{margin:0 0 20px;color:var(--mu);font-size:16px}
-button:focus-visible,textarea:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+button:focus-visible,textarea:focus-visible,input:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
 .composer{background:var(--sf);border:1px solid var(--ln);border-radius:16px;padding:14px 16px;margin-bottom:22px}
 textarea{width:100%;border:0;background:transparent;color:var(--tx);font:inherit;font-size:16.5px;resize:none;min-height:74px}
 textarea::placeholder{color:var(--mu)}
@@ -66,6 +79,7 @@ textarea:focus{outline:none}
 .modal-btn.save{background:var(--ac);color:var(--ak);border:0;font-weight:700}
 .modal-btn.save:disabled{opacity:.45;cursor:default}
 @media (max-width:759px){
+  #authShell{margin-top:4vh}
   .app{display:block}
   .side{position:fixed;top:auto;bottom:0;left:0;right:0;height:auto;padding:0 0 env(safe-area-inset-bottom);border:0;border-top:1px solid var(--ln);background:var(--sf);z-index:9}
   .brand{display:none}.mbrand{display:block}
@@ -77,41 +91,78 @@ textarea:focus{outline:none}
 </style>
 </head>
 <body>
-<div class="app">
-  <div class="side">
-    <div class="brand">Man Switch</div>
-    <nav id="nav">
-      <button data-page="journal" class="on">Journal</button>
-      <button data-page="task">Tasks / Goals</button>
-      <button data-page="important">Important</button>
-    </nav>
-  </div>
-
-  <main>
-    <div class="top"><span class="mbrand">Man Switch</span><button id="themeBtn" type="button">Light</button></div>
-    <h1 id="title"></h1>
-    <p class="sub" id="sub"></p>
-
-    <section class="composer">
-      <textarea id="note" maxlength="2000"></textarea>
-      <p class="hint" id="hint"></p>
-      <div id="preview"><img id="prevImg" alt="Selected photo"><button id="rm" type="button" aria-label="Remove photo">&times;</button></div>
-      <div class="bar">
-        <button class="ic" id="gal" type="button">Photo</button>
-        <button class="ic" id="cam" type="button">Camera</button>
-        <span class="sp"></span>
-        <button id="post" type="button">Check in</button>
+<div id="authShell" class="hidden">
+  <section class="auth-card">
+    <h1>Man Switch</h1>
+    <p class="auth-sub">Sign in to access your private check-ins.</p>
+    <div class="auth-tabs">
+      <button id="loginTab" type="button" class="on">Login</button>
+      <button id="registerTab" type="button">Register</button>
+    </div>
+    <form id="authForm">
+      <div class="auth-field">
+        <label for="authUsername">Username</label>
+        <input id="authUsername" name="username" minlength="3" maxlength="32" required>
       </div>
-      <div id="msg" role="status"></div>
-      <input type="file" id="fGal" accept="image/jpeg,image/png,image/webp" hidden>
-      <input type="file" id="fCam" accept="image/*" capture="environment" hidden>
-    </section>
-
-    <div id="feed"><div class="empty">Loading...</div></div>
-  </main>
+      <div class="auth-field">
+        <label for="authPassword">Password</label>
+        <input id="authPassword" name="password" type="password" minlength="8" maxlength="128" required>
+      </div>
+      <div class="auth-field hidden" id="confirmWrap">
+        <label for="authConfirm">Confirm password</label>
+        <input id="authConfirm" name="confirm_password" type="password" minlength="8" maxlength="128">
+      </div>
+      <div class="auth-field hidden" id="topicWrap">
+        <label for="authTopic">ntfy topic URL (optional)</label>
+        <input id="authTopic" name="ntfy_topic" type="url" placeholder="https://ntfy.sh/your-topic">
+      </div>
+      <button id="authSubmit" type="submit">Login</button>
+      <div id="authMsg" role="status"></div>
+    </form>
+  </section>
 </div>
 
-<!-- Edit Modal -->
+<div id="appShell" class="hidden">
+  <div class="app">
+    <div class="side">
+      <div class="brand">Man Switch</div>
+      <nav id="nav">
+        <button data-page="journal" class="on">Journal</button>
+        <button data-page="task">Tasks / Goals</button>
+        <button data-page="important">Important</button>
+      </nav>
+    </div>
+
+    <main>
+      <div class="top">
+        <span class="mbrand">Man Switch</span>
+        <span id="userBadge"></span>
+        <button id="themeBtn" type="button">Light</button>
+        <button id="logoutBtn" type="button">Logout</button>
+      </div>
+      <h1 id="title"></h1>
+      <p class="sub" id="sub"></p>
+
+      <section class="composer">
+        <textarea id="note" maxlength="2000"></textarea>
+        <p class="hint" id="hint"></p>
+        <div id="preview"><img id="prevImg" alt="Selected photo"><button id="rm" type="button" aria-label="Remove photo">&times;</button></div>
+        <div class="bar">
+          <button class="ic" id="gal" type="button">Photo</button>
+          <button class="ic" id="cam" type="button">Camera</button>
+          <span class="sp"></span>
+          <button id="post" type="button">Check in</button>
+        </div>
+        <div id="msg" role="status"></div>
+        <input type="file" id="fGal" accept="image/jpeg,image/png,image/webp" hidden>
+        <input type="file" id="fCam" accept="image/*" capture="environment" hidden>
+      </section>
+
+      <div id="feed"><div class="empty">Loading...</div></div>
+    </main>
+  </div>
+</div>
+
 <div id="editModal" class="modal">
   <div class="modal-content">
     <h2>Edit Entry</h2>
@@ -138,34 +189,88 @@ textarea:focus{outline:none}
 </div>
 
 <script>
-const COPY = {
+const COPY={
   journal:{t:"Journal",s:"Your thoughts, progress and everything in between.",ph:"What's on your mind today?",hint:""},
   task:{t:"Tasks / Goals",s:"Turn your plans into progress.",ph:"What are you working on, and what's next?",hint:""},
   important:{t:"Important saved",s:"Your links, notes and important stuff in one place.",ph:"Save a link, number or note",hint:"Keep real passwords in a password manager, not here."}
 };
-let page = "journal", file = null, editingId = null, editFile = null;
-const $ = id => document.getElementById(id);
-const root = document.documentElement;
+let page="journal",file=null,editingId=null,editFile=null,authMode="login",currentUser=null;
+const $=id=>document.getElementById(id);
+const root=document.documentElement;
 
-function esc(s){const d=document.createElement("div");d.textContent=s;return d.innerHTML}
-function when(iso){
-  const d=new Date(iso);
-  if(isNaN(d))return "";
-  return d.toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"})+" · "+d.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"});
-}
+function esc(s){const d=document.createElement("div");d.textContent=s??"";return d.innerHTML}
+function when(iso){const d=new Date(iso);if(isNaN(d))return"";return d.toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"})+" · "+d.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"})}
 
-/* theme: dark by default to match the reference; the toggle switches to light */
-function setTheme(t){
-  root.dataset.theme=t;
-  $("themeBtn").textContent=t==="dark"?"Light":"Dark";
-  try{localStorage.setItem("theme",t)}catch(e){}
-}
-let saved="dark";
-try{saved=localStorage.getItem("theme")||"dark"}catch(e){}
+function setTheme(t){root.dataset.theme=t;$("themeBtn").textContent=t==="dark"?"Light":"Dark";try{localStorage.setItem("theme",t)}catch(e){}}
+let saved="dark";try{saved=localStorage.getItem("theme")||"dark"}catch(e){}
 setTheme(saved);
 $("themeBtn").onclick=()=>setTheme(root.dataset.theme==="dark"?"light":"dark");
 
-/* pages */
+function showAuth(){
+  closeEditModal();
+  $("appShell").classList.add("hidden");
+  $("authShell").classList.remove("hidden");
+  $("authMsg").textContent="";
+}
+
+function showApp(user){
+  currentUser=user;
+  $("userBadge").textContent=user?.username?`@${user.username}`:"";
+  $("authShell").classList.add("hidden");
+  $("appShell").classList.remove("hidden");
+  showPage(page);
+}
+
+function setAuthMode(mode){
+  authMode=mode;
+  $("loginTab").classList.toggle("on",mode==="login");
+  $("registerTab").classList.toggle("on",mode==="register");
+  $("confirmWrap").classList.toggle("hidden",mode!=="register");
+  $("topicWrap").classList.toggle("hidden",mode!=="register");
+  $("authSubmit").textContent=mode==="login"?"Login":"Create account";
+  $("authMsg").textContent="";
+}
+
+$("loginTab").onclick=()=>setAuthMode("login");
+$("registerTab").onclick=()=>setAuthMode("register");
+
+async function apiFetch(url, options={}){
+  const r=await fetch(url,options);
+  if(r.status===401){showAuth();throw new Error("Please log in again.")}
+  return r;
+}
+
+$("authForm").onsubmit=async e=>{
+  e.preventDefault();
+  const fd=new FormData();
+  fd.append("username",$("authUsername").value.trim());
+  fd.append("password",$("authPassword").value);
+  if(authMode==="register"){
+    fd.append("confirm_password",$("authConfirm").value);
+    fd.append("ntfy_topic",$("authTopic").value.trim());
+  }
+  $("authSubmit").disabled=true;
+  $("authMsg").textContent=authMode==="login"?"Signing in...":"Creating account...";
+  try{
+    const endpoint=authMode==="login"?"/auth/login":"/auth/register";
+    const r=await fetch(endpoint,{method:"POST",body:fd});
+    if(!r.ok){const payload=await r.json().catch(()=>({}));throw new Error(payload.detail||"Authentication failed")}
+    const payload=await r.json();
+    $("authPassword").value="";
+    $("authConfirm").value="";
+    $("authMsg").textContent="";
+    showApp(payload.user);
+  }catch(err){
+    $("authMsg").textContent=err.message||"Authentication failed";
+  }finally{$("authSubmit").disabled=false}
+};
+
+$("logoutBtn").onclick=async()=>{
+  try{await fetch("/auth/logout",{method:"POST"})}catch(e){}
+  currentUser=null;
+  showAuth();
+};
+
 function showPage(p){
   page=p;
   root.dataset.page=p;
@@ -175,82 +280,42 @@ function showPage(p){
   $("note").placeholder=COPY[p].ph;
   $("hint").textContent=COPY[p].hint;
   $("hint").style.display=COPY[p].hint?"block":"none";
+  $("editCategory").value=p;
   loadFeed();
 }
 document.querySelectorAll("#nav button").forEach(b=>b.onclick=()=>showPage(b.dataset.page));
 
-/* feed */
 async function loadFeed(){
   $("feed").innerHTML='<div class="empty">Loading...</div>';
   const mine=page;
   try{
-    const r=await fetch("/history?category="+mine);
+    const r=await apiFetch("/history?category="+mine);
     if(!r.ok)throw new Error();
     const rows=await r.json();
     if(mine!==page)return;
     if(!rows.length){$("feed").innerHTML='<div class="empty">Nothing here yet. Write your first entry above.</div>';return}
-    $("feed").innerHTML=rows.map(p=>`
-      <article class="card" data-id="${p.id}">
-        <div class="meta">
-          <span>${esc(when(p.timestamp))}</span>
-          <div class="card-actions">
-            <button class="card-btn edit-btn" data-id="${p.id}">Edit</button>
-            <button class="card-btn delete-btn" data-id="${p.id}">Delete</button>
-          </div>
-        </div>
-        <p class="note">${esc(p.progress_note)}</p>
-        ${p.image_url?`<img src="${esc(p.image_url)}" alt="Attached photo" loading="lazy">`:""}
-      </article>`).join("");
-    
-    document.querySelectorAll(".edit-btn").forEach(btn=>{
-      btn.onclick=()=>openEditModal(parseInt(btn.dataset.id));
-    });
-    document.querySelectorAll(".delete-btn").forEach(btn=>{
-      btn.onclick=()=>deleteEntry(parseInt(btn.dataset.id));
-    });
-  }catch(e){
-    $("feed").innerHTML='<div class="empty">Couldn\'t load entries. Refresh to try again.</div>';
-  }
+    $("feed").innerHTML=rows.map(p=>`<article class="card" data-id="${p.id}"><div class="meta"><span>${esc(when(p.timestamp))}</span><div class="card-actions"><button class="card-btn edit-btn" data-id="${p.id}">Edit</button><button class="card-btn delete-btn" data-id="${p.id}">Delete</button></div></div><p class="note">${esc(p.progress_note)}</p>${p.image_url?`<img src="${esc(p.image_url)}" alt="Attached photo" loading="lazy">`:""}</article>`).join("");
+    document.querySelectorAll(".edit-btn").forEach(btn=>btn.onclick=()=>openEditModal(parseInt(btn.dataset.id,10)));
+    document.querySelectorAll(".delete-btn").forEach(btn=>btn.onclick=()=>deleteEntry(parseInt(btn.dataset.id,10)));
+  }catch(e){if(!$("authShell").classList.contains("hidden"))return;$("feed").innerHTML='<div class="empty">Couldn\'t load entries. Refresh to try again.</div>'}
 }
 
-/* modal */
 function openEditModal(id){
-  const card = document.querySelector(`[data-id="${id}"]`);
-  const note = card.querySelector(".note").textContent;
-  const img = card.querySelector("img");
-  
-  editingId = id;
-  editFile = null;
-  $("editNote").value = note;
-  $("editMsg").textContent = "";
-  
-  if(img){
-    $("editPreview").style.display = "block";
-    $("editPreviewImg").src = img.src;
-  } else {
-    $("editPreview").style.display = "none";
-  }
-  
+  const card=document.querySelector(`[data-id="${id}"]`);
+  if(!card)return;
+  editingId=id;
+  editFile=null;
+  $("editNote").value=card.querySelector(".note").textContent;
+  $("editCategory").value=page;
+  $("editMsg").textContent="";
+  const img=card.querySelector("img");
+  if(img){$("editPreview").style.display="block";$("editPreviewImg").src=img.src}else{$("editPreview").style.display="none"}
   $("editModal").classList.add("active");
 }
+function closeEditModal(){$("editModal").classList.remove("active");editingId=null;editFile=null}
+$("editCancel").onclick=closeEditModal;
 
-function closeEditModal(){
-  $("editModal").classList.remove("active");
-  editingId = null;
-  editFile = null;
-}
-
-$("editCancel").onclick = closeEditModal;
-
-function pickEditFile(f){
-  if(!f)return;
-  if(f.size>5*1024*1024){$("editMsg").textContent="That photo is over 5 MB. Pick a smaller one.";return}
-  editFile=f;
-  $("editPreviewImg").src=URL.createObjectURL(f);
-  $("editPreview").style.display="block";
-  $("editMsg").textContent="";
-}
-
+function pickEditFile(f){if(!f)return;if(f.size>5*1024*1024){$("editMsg").textContent="That photo is over 5 MB. Pick a smaller one.";return}editFile=f;$("editPreviewImg").src=URL.createObjectURL(f);$("editPreview").style.display="block";$("editMsg").textContent=""}
 $("editGal").onclick=()=>$("editFGal").click();
 $("editCam").onclick=()=>$("editFCam").click();
 $("editFGal").onchange=e=>{pickEditFile(e.target.files[0]);e.target.value=""};
@@ -260,82 +325,57 @@ $("editRemoveImg").onclick=()=>{editFile=null;$("editPreview").style.display="no
 $("editSave").onclick=async()=>{
   const note=$("editNote").value.trim();
   if(!note){$("editMsg").textContent="Write something first.";return}
-  
-  const fd=new FormData();
-  fd.append("note",note);
-  fd.append("category",$("editCategory").value);
-  if(editFile)fd.append("image",editFile);
-  
-  $("editSave").disabled=true;
-  $("editMsg").textContent="Saving...";
-  
+  const fd=new FormData();fd.append("note",note);fd.append("category",$("editCategory").value);if(editFile)fd.append("image",editFile);
+  $("editSave").disabled=true;$("editMsg").textContent="Saving...";
   try{
-    const r=await fetch(`/checkin/${editingId}`,{method:"PUT",body:fd});
+    const r=await apiFetch(`/checkin/${editingId}`,{method:"PUT",body:fd});
     if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.detail||"Update failed")}
-    $("editMsg").textContent="Updated.";
-    await loadFeed();
-    closeEditModal();
-  }catch(e){
-    $("editMsg").textContent=e.message||"Update failed. Try again.";
-  }finally{
-    $("editSave").disabled=false;
-  }
+    $("editMsg").textContent="Updated.";await loadFeed();closeEditModal();
+  }catch(e){$("editMsg").textContent=e.message||"Update failed. Try again."}finally{$("editSave").disabled=false}
 };
 
-/* delete */
 async function deleteEntry(id){
   if(!confirm("Are you sure? This cannot be undone."))return;
   try{
-    const r=await fetch(`/checkin/${id}`,{method:"DELETE"});
-    if(!r.ok)throw new Error("Delete failed");
+    const r=await apiFetch(`/checkin/${id}`,{method:"DELETE"});
+    if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.detail||"Delete failed")}
     await loadFeed();
-  }catch(e){
-    alert("Failed to delete: "+(e.message||"Try again"));
-  }
+  }catch(e){alert("Failed to delete: "+(e.message||"Try again"))}
 }
 
-/* photo picking: gallery and camera feed the same slot */
-function pick(f){
-  if(!f)return;
-  if(f.size>5*1024*1024){$("msg").textContent="That photo is over 5 MB. Pick a smaller one.";return}
-  file=f;
-  $("prevImg").src=URL.createObjectURL(f);
-  $("preview").style.display="block";
-  $("msg").textContent="";
-}
+function pick(f){if(!f)return;if(f.size>5*1024*1024){$("msg").textContent="That photo is over 5 MB. Pick a smaller one.";return}file=f;$("prevImg").src=URL.createObjectURL(f);$("preview").style.display="block";$("msg").textContent=""}
 $("gal").onclick=()=>$("fGal").click();
 $("cam").onclick=()=>$("fCam").click();
 $("fGal").onchange=e=>{pick(e.target.files[0]);e.target.value=""};
 $("fCam").onchange=e=>{pick(e.target.files[0]);e.target.value=""};
 $("rm").onclick=()=>{file=null;$("preview").style.display="none"};
 
-/* posting */
 $("post").onclick=async()=>{
   const note=$("note").value.trim();
   if(!note){$("msg").textContent="Write something first.";return}
-  const fd=new FormData();
-  fd.append("note",note);
-  fd.append("category",page);
-  if(file)fd.append("image",file);
-  $("post").disabled=true;
-  $("msg").textContent="Checking in...";
+  const fd=new FormData();fd.append("note",note);fd.append("category",page);if(file)fd.append("image",file);
+  $("post").disabled=true;$("msg").textContent="Checking in...";
   try{
-    const r=await fetch("/checkin",{method:"POST",body:fd});
+    const r=await apiFetch("/checkin",{method:"POST",body:fd});
     if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.detail||"Check-in failed")}
-    $("note").value="";file=null;$("preview").style.display="none";
-    $("msg").textContent="Checked in.";
-    await loadFeed();
-  }catch(e){
-    $("msg").textContent=e.message||"Check-in failed. Try again.";
-  }finally{
-    $("post").disabled=false;
-  }
+    $("note").value="";file=null;$("preview").style.display="none";$("msg").textContent="Checked in.";await loadFeed();
+  }catch(e){$("msg").textContent=e.message||"Check-in failed. Try again."}finally{$("post").disabled=false}
 };
 
-showPage("journal");
-if("serviceWorker" in navigator){
-  navigator.serviceWorker.register("/sw.js").catch(()=>{});
+async function init(){
+  setAuthMode("login");
+  try{
+    const r=await fetch("/auth/me");
+    if(!r.ok)throw new Error("unauth");
+    const payload=await r.json();
+    showApp(payload.user);
+  }catch(e){
+    showAuth();
+  }
 }
+
+init();
+if("serviceWorker" in navigator){navigator.serviceWorker.register("/sw.js").catch(()=>{})}
 </script>
 </body>
 </html>
