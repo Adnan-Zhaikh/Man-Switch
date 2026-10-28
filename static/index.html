@@ -37,10 +37,13 @@ nav{display:flex;flex-direction:column;gap:6px}
 nav button{background:none;border:0;border-radius:10px;color:var(--mu);font:inherit;font-size:15px;text-align:left;padding:11px 12px;cursor:pointer}
 nav button.on{color:var(--ac);font-weight:700;background:color-mix(in srgb,var(--ac) 15%,transparent)}
 main{padding:24px 22px;max-width:660px;width:100%}
-.top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
 .mbrand{display:none;font-family:var(--serif);font-size:20px;color:var(--ac)}
 #userBadge{font-size:13px;color:var(--mu)}
-#logoutBtn,#themeBtn{background:none;border:1px solid var(--ln);color:var(--mu);border-radius:18px;padding:5px 13px;font:inherit;font-size:13px;cursor:pointer}
+#logoutBtn,#themeBtn,#notifyBtn,#notifyTest,#adminLink{background:none;border:1px solid var(--ln);color:var(--mu);border-radius:18px;padding:5px 13px;font:inherit;font-size:13px;cursor:pointer;text-decoration:none}
+#notifyBtn:disabled{opacity:.6;cursor:default}
+#notifyBtn.on{color:var(--ac);border-color:var(--ac)}
+#notifyHint{margin:10px 0 0;font-size:13px;color:var(--ac);display:none}
 h1{font-family:var(--serif);font-weight:400;font-size:40px;line-height:1.1;margin:10px 0 6px;color:var(--ac)}
 .sub{margin:0 0 20px;color:var(--mu);font-size:16px}
 button:focus-visible,textarea:focus-visible,input:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
@@ -112,10 +115,6 @@ textarea:focus{outline:none}
         <label for="authConfirm">Confirm password</label>
         <input id="authConfirm" name="confirm_password" type="password" minlength="8" maxlength="128">
       </div>
-      <div class="auth-field hidden" id="topicWrap">
-        <label for="authTopic">ntfy topic URL (optional)</label>
-        <input id="authTopic" name="ntfy_topic" type="url" placeholder="https://ntfy.sh/your-topic">
-      </div>
       <button id="authSubmit" type="submit">Login</button>
       <div id="authMsg" role="status"></div>
     </form>
@@ -137,9 +136,13 @@ textarea:focus{outline:none}
       <div class="top">
         <span class="mbrand">Man Switch</span>
         <span id="userBadge"></span>
+        <a id="adminLink" class="hidden" href="/admin">Admin</a>
+        <button id="notifyBtn" type="button" disabled>Alerts</button>
+        <button id="notifyTest" class="hidden" type="button">Test</button>
         <button id="themeBtn" type="button">Light</button>
         <button id="logoutBtn" type="button">Logout</button>
       </div>
+      <p id="notifyHint" role="status"></p>
       <h1 id="title"></h1>
       <p class="sub" id="sub"></p>
 
@@ -163,11 +166,11 @@ textarea:focus{outline:none}
   </div>
 </div>
 
-<div id="editModal" class="modal">
+<div id="editModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="editTitle">
   <div class="modal-content">
-    <h2>Edit Entry</h2>
-    <textarea id="editNote" maxlength="2000" style="width:100%;border:1px solid var(--ln);border-radius:8px;padding:8px;background:var(--bg);color:var(--tx);font:inherit;min-height:100px;resize:none"></textarea>
-    <select id="editCategory">
+    <h2 id="editTitle">Edit Entry</h2>
+    <textarea id="editNote" maxlength="2000" aria-label="Entry text" style="width:100%;border:1px solid var(--ln);border-radius:8px;padding:8px;background:var(--bg);color:var(--tx);font:inherit;min-height:100px;resize:none"></textarea>
+    <select id="editCategory" aria-label="Category">
       <option value="journal">Journal</option>
       <option value="task">Tasks / Goals</option>
       <option value="important">Important</option>
@@ -182,8 +185,8 @@ textarea:focus{outline:none}
     <input type="file" id="editFCam" accept="image/*" capture="environment" hidden>
     <div id="editMsg" style="font-size:13px;color:var(--ac);min-height:18px;margin-bottom:12px"></div>
     <div class="modal-actions">
-      <button class="modal-btn" id="editCancel">Cancel</button>
-      <button class="modal-btn save" id="editSave">Save</button>
+      <button class="modal-btn" id="editCancel" type="button">Cancel</button>
+      <button class="modal-btn save" id="editSave" type="button">Save</button>
     </div>
   </div>
 </div>
@@ -194,11 +197,11 @@ const COPY={
   task:{t:"Tasks / Goals",s:"Turn your plans into progress.",ph:"What are you working on, and what's next?",hint:""},
   important:{t:"Important saved",s:"Your links, notes and important stuff in one place.",ph:"Save a link, number or note",hint:"Keep real passwords in a password manager, not here."}
 };
-let page="journal",file=null,editingId=null,editFile=null,authMode="login",currentUser=null;
+let page="journal",file=null,editingId=null,editFile=null,editRemove=false,authMode="login",currentUser=null;
 const $=id=>document.getElementById(id);
 const root=document.documentElement;
 
-function esc(s){const d=document.createElement("div");d.textContent=s??"";return d.innerHTML}
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function when(iso){const d=new Date(iso);if(isNaN(d))return"";return d.toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"})+" · "+d.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"})}
 
 function setTheme(t){root.dataset.theme=t;$("themeBtn").textContent=t==="dark"?"Light":"Dark";try{localStorage.setItem("theme",t)}catch(e){}}
@@ -216,9 +219,11 @@ function showAuth(){
 function showApp(user){
   currentUser=user;
   $("userBadge").textContent=user?.username?`@${user.username}`:"";
+  $("adminLink").classList.toggle("hidden",!user?.is_admin);
   $("authShell").classList.add("hidden");
   $("appShell").classList.remove("hidden");
   showPage(page);
+  refreshNotify();
 }
 
 function setAuthMode(mode){
@@ -226,7 +231,6 @@ function setAuthMode(mode){
   $("loginTab").classList.toggle("on",mode==="login");
   $("registerTab").classList.toggle("on",mode==="register");
   $("confirmWrap").classList.toggle("hidden",mode!=="register");
-  $("topicWrap").classList.toggle("hidden",mode!=="register");
   $("authSubmit").textContent=mode==="login"?"Login":"Create account";
   $("authMsg").textContent="";
 }
@@ -247,7 +251,6 @@ $("authForm").onsubmit=async e=>{
   fd.append("password",$("authPassword").value);
   if(authMode==="register"){
     fd.append("confirm_password",$("authConfirm").value);
-    fd.append("ntfy_topic",$("authTopic").value.trim());
   }
   $("authSubmit").disabled=true;
   $("authMsg").textContent=authMode==="login"?"Signing in...":"Creating account...";
@@ -263,6 +266,67 @@ $("authForm").onsubmit=async e=>{
   }catch(err){
     $("authMsg").textContent=err.message||"Authentication failed";
   }finally{$("authSubmit").disabled=false}
+};
+
+/* ---- Browser (Web Push) notifications ---- */
+const NOTIFY={on:false,key:null};
+function b64ToU8(b64){const pad="=".repeat((4-b64.length%4)%4);const raw=atob((b64+pad).replace(/-/g,"+").replace(/_/g,"/"));return Uint8Array.from(raw,c=>c.charCodeAt(0))}
+function pushSupported(){return "serviceWorker" in navigator&&"PushManager" in window&&"Notification" in window}
+function notifyNote(t){const el=$("notifyHint");el.textContent=t;el.style.display=t?"block":"none"}
+async function currentSub(){const reg=await navigator.serviceWorker.ready;return reg.pushManager.getSubscription()}
+async function sendSub(sub){
+  const j=sub.toJSON();
+  const r=await apiFetch("/push/subscribe",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({endpoint:j.endpoint,keys:j.keys})});
+  if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.detail||"Could not register this device")}
+}
+async function refreshNotify(){
+  const btn=$("notifyBtn");
+  NOTIFY.on=false;btn.classList.remove("on");$("notifyTest").classList.add("hidden");notifyNote("");
+  if(!pushSupported()){btn.textContent="Alerts unavailable";btn.disabled=true;btn.title="This browser can't receive push notifications. On iPhone, add the app to your Home Screen first.";return}
+  try{
+    const r=await apiFetch("/push/public-key");
+    const info=await r.json();
+    NOTIFY.key=info.key;
+    if(!info.configured){btn.textContent="Alerts not set up";btn.disabled=true;return}
+    if(Notification.permission==="denied"){btn.textContent="Alerts blocked";btn.disabled=true;btn.title="Allow notifications for this site in your browser settings.";return}
+    const sub=Notification.permission==="granted"?await currentSub():null;
+    btn.disabled=false;
+    if(sub){
+      await sendSub(sub).catch(()=>{});   // re-sync, in case the server lost or rotated it
+      NOTIFY.on=true;btn.textContent="Alerts on";btn.classList.add("on");$("notifyTest").classList.remove("hidden");
+    }else{
+      btn.textContent="Enable alerts";
+      notifyNote("Alerts are off on this device. Turn them on so a missed check-in reaches you.");
+    }
+  }catch(e){/* not signed in, or offline: leave the button as is */}
+}
+$("notifyBtn").onclick=async()=>{
+  const btn=$("notifyBtn");btn.disabled=true;
+  try{
+    if(NOTIFY.on){
+      if(!confirm("Turn off alerts on this device?")){return}
+      const sub=await currentSub();
+      if(sub){await apiFetch("/push/unsubscribe",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({endpoint:sub.endpoint})});await sub.unsubscribe()}
+    }else{
+      const perm=await Notification.requestPermission();
+      if(perm!=="granted"){notifyNote("Notifications weren't allowed, so alerts can't be sent to this device.");return}
+      const reg=await navigator.serviceWorker.ready;
+      let sub=await reg.pushManager.getSubscription();
+      try{sub=sub||await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64ToU8(NOTIFY.key)})}
+      catch(e){ if(sub){await sub.unsubscribe()} sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64ToU8(NOTIFY.key)}) }
+      await sendSub(sub);
+    }
+  }catch(e){notifyNote(e.message||"Something went wrong turning alerts on.");btn.disabled=false;return}
+  finally{btn.disabled=false}
+  await refreshNotify();
+};
+$("notifyTest").onclick=async()=>{
+  const b=$("notifyTest");b.disabled=true;
+  try{
+    const r=await apiFetch("/push/test",{method:"POST"});
+    const e=await r.json().catch(()=>({}));
+    notifyNote(r.ok?"Test notification sent.":(e.detail||"Test failed."));
+  }catch(e){notifyNote(e.message||"Test failed.")}finally{b.disabled=false}
 };
 
 $("logoutBtn").onclick=async()=>{
@@ -301,31 +365,34 @@ async function loadFeed(){
 }
 
 function openEditModal(id){
-  const card=document.querySelector(`[data-id="${id}"]`);
+  const card=document.querySelector(`article.card[data-id="${id}"]`);
   if(!card)return;
   editingId=id;
   editFile=null;
+  editRemove=false;
   $("editNote").value=card.querySelector(".note").textContent;
   $("editCategory").value=page;
   $("editMsg").textContent="";
   const img=card.querySelector("img");
   if(img){$("editPreview").style.display="block";$("editPreviewImg").src=img.src}else{$("editPreview").style.display="none"}
   $("editModal").classList.add("active");
+  $("editNote").focus();
 }
-function closeEditModal(){$("editModal").classList.remove("active");editingId=null;editFile=null}
+function closeEditModal(){$("editModal").classList.remove("active");editingId=null;editFile=null;editRemove=false}
 $("editCancel").onclick=closeEditModal;
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&$("editModal").classList.contains("active"))closeEditModal()});
 
-function pickEditFile(f){if(!f)return;if(f.size>5*1024*1024){$("editMsg").textContent="That photo is over 5 MB. Pick a smaller one.";return}editFile=f;$("editPreviewImg").src=URL.createObjectURL(f);$("editPreview").style.display="block";$("editMsg").textContent=""}
+function pickEditFile(f){if(!f)return;if(f.size>5*1024*1024){$("editMsg").textContent="That photo is over 5 MB. Pick a smaller one.";return}editFile=f;editRemove=false;$("editPreviewImg").src=URL.createObjectURL(f);$("editPreview").style.display="block";$("editMsg").textContent=""}
 $("editGal").onclick=()=>$("editFGal").click();
 $("editCam").onclick=()=>$("editFCam").click();
 $("editFGal").onchange=e=>{pickEditFile(e.target.files[0]);e.target.value=""};
 $("editFCam").onchange=e=>{pickEditFile(e.target.files[0]);e.target.value=""};
-$("editRemoveImg").onclick=()=>{editFile=null;$("editPreview").style.display="none"};
+$("editRemoveImg").onclick=()=>{editFile=null;editRemove=true;$("editPreview").style.display="none"};
 
 $("editSave").onclick=async()=>{
   const note=$("editNote").value.trim();
   if(!note){$("editMsg").textContent="Write something first.";return}
-  const fd=new FormData();fd.append("note",note);fd.append("category",$("editCategory").value);if(editFile)fd.append("image",editFile);
+  const fd=new FormData();fd.append("note",note);fd.append("category",$("editCategory").value);if(editFile)fd.append("image",editFile);else if(editRemove)fd.append("remove_image","true");
   $("editSave").disabled=true;$("editMsg").textContent="Saving...";
   try{
     const r=await apiFetch(`/checkin/${editingId}`,{method:"PUT",body:fd});
@@ -363,6 +430,7 @@ $("post").onclick=async()=>{
 };
 
 async function init(){
+  try{const c=await (await fetch("/auth/config")).json();$("registerTab").classList.toggle("hidden",!c.registration_open)}catch(e){}
   setAuthMode("login");
   try{
     const r=await fetch("/auth/me");

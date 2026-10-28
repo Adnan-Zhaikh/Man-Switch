@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Man Switch · Admin</title>
+<link rel="icon" href="/icon-192.png">
+<style>
+:root{--serif:Georgia,"Times New Roman",serif;--sans:system-ui,-apple-system,"Segoe UI",sans-serif}
+:root[data-theme="dark"]{--bg:#0f1115;--sf:#171a21;--ln:#2a2f3a;--ac:#7cb7ff;--ak:#07182b;--mu:#8f98a8;--tx:#e8ecf3;--ok:#5fd9a8;--warn:#f0b84b;--bad:#ff7a7a}
+:root[data-theme="light"]{--bg:#f4f6fa;--sf:#fff;--ln:#dde2ec;--ac:#1d63c6;--ak:#fff;--mu:#5d6778;--tx:#141a26;--ok:#14815d;--warn:#9a6a00;--bad:#c0392b}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:var(--sans);line-height:1.5}
+main{max-width:760px;margin:0 auto;padding:18px 16px 60px}
+.top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:space-between}
+h1{font-family:var(--serif);font-weight:400;font-size:32px;margin:8px 0 2px;color:var(--ac)}
+h2{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--mu);margin:26px 0 8px;font-weight:600}
+.sub{margin:0 0 6px;color:var(--mu);font-size:14px}
+a.btn,button{font:inherit;font-size:13px;background:none;border:1px solid var(--ln);color:var(--mu);border-radius:18px;padding:6px 14px;cursor:pointer;text-decoration:none}
+a.btn:hover,button:hover:not(:disabled){color:var(--ac);border-color:var(--ac)}
+button:disabled{opacity:.5;cursor:default}
+button.primary{background:var(--ac);color:var(--ak);border:0;font-weight:700}
+button.danger:hover:not(:disabled){color:var(--bad);border-color:var(--bad)}
+button:focus-visible,a:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+.card{background:var(--sf);border:1px solid var(--ln);border-radius:14px;padding:14px 16px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.kv{font-size:13px;color:var(--mu)}
+.kv b{display:block;color:var(--tx);font-size:15px;font-weight:600;word-break:break-word}
+.ok{color:var(--ok)!important}.warn{color:var(--warn)!important}.bad{color:var(--bad)!important}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.user{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px}
+.user .name{font-weight:600;font-size:16px}
+.badge{display:inline-block;font-size:11px;border:1px solid var(--ln);border-radius:10px;padding:0 7px;margin-left:6px;color:var(--mu);vertical-align:middle}
+.badge.bad{border-color:var(--bad)}.badge.ok{border-color:var(--ok)}.badge.warn{border-color:var(--warn)}
+.meta{font-size:13px;color:var(--mu)}
+#msg{min-height:20px;font-size:13px;color:var(--ac);margin:10px 0 0}
+.note{font-size:12.5px;color:var(--mu);margin:10px 0 0}
+@media (max-width:520px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main>
+  <div class="top">
+    <a class="btn" href="/">&larr; My journal</a>
+    <button id="themeBtn" type="button">Light</button>
+  </div>
+  <h1>Admin</h1>
+  <p class="sub" id="who"></p>
+  <div id="msg" role="status"></div>
+
+  <h2>System</h2>
+  <div class="card">
+    <div class="grid" id="status"></div>
+    <div class="row">
+      <button id="tickBtn" type="button" class="primary">Run deadline check now</button>
+      <button id="testBtn" type="button">Send test to my devices</button>
+      <button id="regBtn" type="button"></button>
+    </div>
+    <p class="note" id="ipNote"></p>
+  </div>
+
+  <h2>Accounts</h2>
+  <div id="users"><div class="meta">Loading...</div></div>
+  <p class="note">You can see account details only. Other people's entries and photos are never shown here.</p>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const root=document.documentElement;
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function ago(iso){
+  if(!iso)return "never";
+  const t=new Date(iso).getTime();if(isNaN(t))return "unknown";
+  const s=Math.max(0,(Date.now()-t)/1000);
+  if(s<90)return "just now";
+  if(s<5400)return Math.round(s/60)+" min ago";
+  if(s<172800)return Math.round(s/3600)+" h ago";
+  return Math.round(s/86400)+" days ago";
+}
+function setTheme(t){root.dataset.theme=t;$("themeBtn").textContent=t==="dark"?"Light":"Dark";try{localStorage.setItem("theme",t)}catch(e){}}
+let saved="dark";try{saved=localStorage.getItem("theme")||"dark"}catch(e){}
+setTheme(saved);
+$("themeBtn").onclick=()=>setTheme(root.dataset.theme==="dark"?"light":"dark");
+function say(t){$("msg").textContent=t||""}
+
+let DATA=null;
+async function api(url,opts){
+  const r=await fetch(url,opts);
+  if(r.status===401||r.status===403){location.href="/";throw new Error("redirect")}
+  const body=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(body.detail||"Request failed ("+r.status+")");
+  return body;
+}
+
+function kv(label,value,cls){return `<div class="kv">${esc(label)}<b class="${cls||""}">${esc(value)}</b></div>`}
+
+function render(){
+  const s=DATA.status;
+  $("who").textContent="Signed in as @"+DATA.me.username;
+  const t=s.last_tick;
+  let tickText="never",tickCls="warn";
+  if(t){tickText=ago(t.at)+" ("+t.source+")";tickCls=(Date.now()-new Date(t.at).getTime())<(s.tick_minutes*3+10)*60000?"ok":"warn"}
+  $("status").innerHTML=[
+    kv("Last deadline check",tickText,tickCls),
+    kv("Last result",t?`${t.overdue} overdue, ${t.alerted} alerted, ${t.no_device} without a device, ${t.errors} errors`:"-",t&&t.errors?"bad":""),
+    kv("Browser alerts",s.push_configured?"Configured":"Not configured (set VAPID_* keys)",s.push_configured?"ok":"bad"),
+    kv("External cron hook",s.cron_configured?"Enabled":"Off (set CRON_SECRET)",s.cron_configured?"ok":"warn"),
+    kv("Deadline",s.deadline_hours+" h, re-alert every "+s.repeat_minutes+" min"),
+    kv("Registration",s.registration_open?"Open":"Closed",s.registration_open?"warn":"ok"),
+  ].join("");
+  $("regBtn").textContent=s.registration_open?"Close registration":"Open registration";
+  $("ipNote").textContent=`Your address as the app sees it: ${s.detected_ip}. Forwarded-for header: ${s.forwarded_for||"(none)"}. Trusted proxy hops: ${s.trusted_proxy_hops}. If the detected address isn't yours, rate limits would treat everyone as one person; adjust TRUSTED_PROXY_HOPS.`;
+
+  $("users").innerHTML=DATA.users.map(u=>{
+    const badges=[
+      u.is_admin?'<span class="badge ok">admin</span>':"",
+      u.overdue?'<span class="badge bad">overdue</span>':"",
+      u.devices===0?'<span class="badge warn">no alert device</span>':"",
+    ].join("");
+    const del=u.is_admin?"":`<button class="danger" data-del="${u.id}" data-name="${esc(u.username)}" type="button">Delete</button>`;
+    return `<div class="card user"><div><div class="name">@${esc(u.username)}${badges}</div>
+      <div class="meta">Joined ${esc(ago(u.created_at))} &middot; ${u.entries} entries &middot; last check-in ${esc(ago(u.last_checkin))} &middot; ${u.devices} device${u.devices===1?"":"s"}</div></div>${del}</div>`;
+  }).join("")||'<div class="meta">No accounts.</div>';
+  document.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>removeUser(b.dataset.del,b.dataset.name));
+}
+
+async function load(){
+  try{DATA=await api("/admin/api/overview");render()}
+  catch(e){if(e.message!=="redirect")say(e.message)}
+}
+
+$("tickBtn").onclick=async()=>{
+  const b=$("tickBtn");b.disabled=true;say("Checking...");
+  try{const r=await api("/admin/api/tick",{method:"POST"});say(r.skipped?"A check was already running.":`Done: ${r.overdue} overdue, ${r.alerted} alerted, ${r.no_device} without a device, ${r.errors} errors.`);await load()}
+  catch(e){say(e.message)}finally{b.disabled=false}
+};
+$("testBtn").onclick=async()=>{
+  const b=$("testBtn");b.disabled=true;say("Sending...");
+  try{await api("/push/test",{method:"POST"});say("Test notification sent to your devices.")}
+  catch(e){say(e.message)}finally{b.disabled=false}
+};
+$("regBtn").onclick=async()=>{
+  const open=!DATA.status.registration_open;
+  if(open&&!confirm("Open registration to anyone who can reach this site?"))return;
+  const fd=new FormData();fd.append("open",open?"true":"false");
+  try{await api("/admin/api/registration",{method:"POST",body:fd});say(open?"Registration opened.":"Registration closed.");await load()}
+  catch(e){say(e.message)}
+};
+async function removeUser(id,name){
+  if(!confirm(`Delete @${name} and ALL of their entries and photos? This cannot be undone.`))return;
+  try{const r=await api("/admin/api/users/"+id,{method:"DELETE"});say(`Deleted @${name} (${r.images_removed} photos removed).`);await load()}
+  catch(e){say(e.message)}
+}
+
+load();
+setInterval(()=>{if(!document.hidden)load()},30000);
+</script>
+</body>
+</html>

@@ -1,9 +1,12 @@
-import uuid
+import logging
 import os
+import uuid
+
 from dotenv import load_dotenv
 from supabase import create_client
 
 load_dotenv()
+logger = logging.getLogger(__name__)
 sb = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_SERVICE_KEY"))
 
 def upload_image(file_bytes, content_type, category):
@@ -31,5 +34,5 @@ def delete_image(path):
         sb.storage.from_("post-images").remove([path])
         return True
     except Exception as e:
-        print(f"Failed to delete image {path}: {e}")
+        logger.warning("Failed to delete image %s: %s", path, e)
         return False

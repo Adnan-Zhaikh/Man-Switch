@@ -1,0 +1,27 @@
+# Independent heartbeat: wakes the app and runs the deadline check every 10 minutes,
+# even if the in-app scheduler or your other pinger has stopped.
+#
+# Setup: repo Settings > Secrets and variables > Actions > New repository secret
+#   APP_URL      e.g. https://your-app.onrender.com   (no trailing slash)
+#   CRON_SECRET  the same value as the CRON_SECRET env var on Render
+#
+# Notes: GitHub runs scheduled jobs on a best-effort basis (they can start several minutes
+# late) and pauses them after 60 days without repository activity.
+name: tick
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Call /internal/tick
+        run: |
+          # A sleeping free-tier instance needs about a minute to start, so wait up to 120s and retry.
+          curl --fail --silent --show-error \
+            --max-time 120 --retry 3 --retry-delay 20 --retry-all-errors \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/internal/tick"

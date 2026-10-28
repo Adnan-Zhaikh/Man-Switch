@@ -9,7 +9,7 @@ SESSION_USER_ID_KEY = "user_id"
 SESSION_ID_KEY = "session_id"
 
 PASSWORD_HASH_ALGORITHM = "pbkdf2_sha256"
-PASSWORD_HASH_ITERATIONS = 390000
+PASSWORD_HASH_ITERATIONS = 600000
 SALT_BYTES = 16
 
 USERNAME_MIN_LEN = 3
@@ -52,6 +52,11 @@ def verify_password(password: str, password_hash: str) -> bool:
         iterations_value,
     )
     return hmac.compare_digest(candidate, expected)
+
+
+# Verified against when a login names an unknown user, so that response time
+# doesn't reveal which usernames exist.
+DUMMY_PASSWORD_HASH = hash_password(secrets.token_urlsafe(16))
 
 
 def validate_username(username: str) -> str:
