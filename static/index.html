@@ -40,7 +40,7 @@ main{padding:24px 22px;max-width:660px;width:100%}
 .top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
 .mbrand{display:none;font-family:var(--serif);font-size:20px;color:var(--ac)}
 #userBadge{font-size:13px;color:var(--mu)}
-#logoutBtn,#themeBtn,#notifyBtn,#notifyTest,#adminLink{background:none;border:1px solid var(--ln);color:var(--mu);border-radius:18px;padding:5px 13px;font:inherit;font-size:13px;cursor:pointer;text-decoration:none}
+#logoutBtn,#themeBtn,#notifyBtn,#notifyTest,#adminLink,#todoLink{background:none;border:1px solid var(--ln);color:var(--mu);border-radius:18px;padding:5px 13px;font:inherit;font-size:13px;cursor:pointer;text-decoration:none}
 #notifyBtn:disabled{opacity:.6;cursor:default}
 #notifyBtn.on{color:var(--ac);border-color:var(--ac)}
 #notifyHint{margin:10px 0 0;font-size:13px;color:var(--ac);display:none}
@@ -136,6 +136,7 @@ textarea:focus{outline:none}
       <div class="top">
         <span class="mbrand">Man Switch</span>
         <span id="userBadge"></span>
+        <a id="todoLink" href="/todo">To-do</a>
         <a id="adminLink" class="hidden" href="/admin">Admin</a>
         <button id="notifyBtn" type="button" disabled>Alerts</button>
         <button id="notifyTest" class="hidden" type="button">Test</button>

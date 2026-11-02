@@ -78,7 +78,7 @@ def validate_subscription(endpoint, p256dh, auth):
     return endpoint, p256dh, auth
 
 
-def _send_one(sub, payload, ttl):
+def _send_one(sub, payload, ttl, topic, urgency):
     """Returns 'ok', 'gone' (subscription is dead) or 'error'."""
     try:
         webpush(
@@ -88,7 +88,7 @@ def _send_one(sub, payload, ttl):
             vapid_claims={"sub": os.getenv("VAPID_SUBJECT", "")},  # fresh dict: webpush mutates it
             ttl=ttl,
             timeout=10,
-            headers={"Urgency": "high", "Topic": "man-switch"},
+            headers={"Urgency": urgency, "Topic": topic},
         )
         return "ok"
     except WebPushException as exc:
@@ -102,17 +102,18 @@ def _send_one(sub, payload, ttl):
         return "error"
 
 
-def send_to_user(user_id, payload, ttl=24 * 3600):
+def send_to_user(user_id, payload, ttl=24 * 3600, topic="deadline", urgency="high"):
     """Send a notification to every device of a user. Returns how many were delivered.
 
-    Subscriptions the push service reports as gone are deleted.
+    Subscriptions the push service reports as gone are deleted. `topic` lets the
+    push service replace an older undelivered message of the same kind (and only that kind).
     """
     if not is_configured():
         logger.warning("Web Push is not configured (VAPID_* env vars missing)")
         return 0
     delivered = 0
     for sub in get_push_subscriptions(user_id):
-        result = _send_one(sub, payload, ttl)
+        result = _send_one(sub, payload, ttl, topic, urgency)
         if result == "ok":
             delivered += 1
         elif result == "gone":

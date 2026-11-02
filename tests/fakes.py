@@ -12,6 +12,8 @@ import main  # noqa: E402
 import push  # noqa: E402
 import ratelimit  # noqa: E402
 import scheduler  # noqa: E402
+import todo_logic  # noqa: E402
+import todos  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
 REAL_BOOTSTRAP_ADMIN = main.bootstrap_admin_if_configured
@@ -27,13 +29,16 @@ def now_iso():
 class FakeStore:
     def __init__(self):
         self.users, self.checkins, self.subs, self.settings = {}, {}, [], {}
+        self.tasks, self.next_task = {}, 1
         self.next_user, self.next_checkin = 1, 1
         self.uploads, self.deleted_images = [], []
 
     # users
     def create_user(self, username, password_hash, is_admin=False):
         user = {"id": self.next_user, "username": username, "password_hash": password_hash,
-                "is_admin": is_admin, "created_at": now_iso(), "last_alert_at": None}
+                "is_admin": is_admin, "created_at": now_iso(), "last_alert_at": None,
+                "timezone": "UTC", "todo_reminders": True, "quiet_start": 22, "quiet_end": 7,
+                "last_todo_reminder_at": None, "widget_token_hash": None}
         self.users[user["id"]] = user
         self.next_user += 1
         return {k: user[k] for k in ("id", "username", "is_admin", "created_at")}
@@ -73,6 +78,7 @@ class FakeStore:
         paths = [c["image_url"] for c in self.checkins.values() if c["user_id"] == user_id and c["image_url"]]
         self.checkins = {k: c for k, c in self.checkins.items() if c["user_id"] != user_id}
         self.subs = [s for s in self.subs if s["user_id"] != user_id]
+        self.tasks = {k: t for k, t in self.tasks.items() if t["user_id"] != user_id}
         del self.users[user_id]
         return True, paths
 
@@ -140,6 +146,101 @@ class FakeStore:
     def release_alert(self, user_id, previous):
         self.users[user_id]["last_alert_at"] = previous
 
+    # tasks
+    def add_task(self, user_id, title, day, priority=0):
+        t = {"id": self.next_task, "user_id": user_id, "title": title, "day": day,
+             "priority": priority, "created_at": todo_logic.utcnow().isoformat(), "done_at": None}
+        self.tasks[t["id"]] = t
+        self.next_task += 1
+        return self._task(t)
+
+    @staticmethod
+    def _task(t):
+        return {k: t[k] for k in ("id", "title", "day", "priority", "created_at", "done_at")}
+
+    def get_task(self, task_id, user_id):
+        t = self.tasks.get(task_id)
+        return self._task(t) if t and t["user_id"] == user_id else None
+
+    def list_tasks(self, user_id, start_day=None, end_day=None, only_open=False):
+        rows = [t for t in self.tasks.values() if t["user_id"] == user_id
+                and (start_day is None or t["day"] >= start_day)
+                and (end_day is None or t["day"] <= end_day)
+                and (not only_open or t["done_at"] is None)]
+        rows.sort(key=lambda t: (t["day"], -t["priority"], t["id"]))
+        return [self._task(t) for t in rows]
+
+    def count_tasks_on_day(self, user_id, day):
+        return len([t for t in self.tasks.values() if t["user_id"] == user_id and t["day"] == day])
+
+    def update_task(self, task_id, user_id, title=None, day=None, priority=None, done=None):
+        t = self.tasks.get(task_id)
+        if not t or t["user_id"] != user_id:
+            return None
+        if title is not None:
+            t["title"] = title
+        if day is not None:
+            t["day"] = day
+        if priority is not None:
+            t["priority"] = priority
+        if done is True and t["done_at"] is None:
+            t["done_at"] = todo_logic.utcnow().isoformat()
+        elif done is False:
+            t["done_at"] = None
+        return self._task(t)
+
+    def delete_task(self, task_id, user_id):
+        t = self.tasks.get(task_id)
+        if not t or t["user_id"] != user_id:
+            return False
+        del self.tasks[task_id]
+        return True
+
+    def task_day_counts(self, user_id, start_day, end_day):
+        out = {}
+        for t in self.tasks.values():
+            if t["user_id"] == user_id and start_day <= t["day"] <= end_day:
+                r = out.setdefault(t["day"], {"day": t["day"], "planned": 0, "done": 0})
+                r["planned"] += 1
+                r["done"] += 1 if t["done_at"] else 0
+        return sorted(out.values(), key=lambda r: r["day"])
+
+    def get_todo_settings(self, user_id):
+        u = self.users.get(user_id)
+        if not u:
+            return None
+        return {"timezone": u["timezone"], "todo_reminders": u["todo_reminders"], "quiet_start": u["quiet_start"],
+                "quiet_end": u["quiet_end"], "widget_configured": u["widget_token_hash"] is not None}
+
+    def update_todo_settings(self, user_id, timezone_name=None, todo_reminders=None, quiet_start=None, quiet_end=None):
+        u = self.users[user_id]
+        for key, val in (("timezone", timezone_name), ("todo_reminders", todo_reminders),
+                         ("quiet_start", quiet_start), ("quiet_end", quiet_end)):
+            if val is not None:
+                u[key] = val
+
+    def set_widget_token_hash(self, user_id, token_hash):
+        self.users[user_id]["widget_token_hash"] = token_hash
+
+    def get_user_by_widget_token_hash(self, token_hash):
+        u = next((u for u in self.users.values() if u["widget_token_hash"] == token_hash), None)
+        return {"id": u["id"], "timezone": u["timezone"]} if u else None
+
+    def get_users_with_open_tasks(self):
+        ids = {t["user_id"] for t in self.tasks.values() if t["done_at"] is None}
+        keys = ("id", "timezone", "todo_reminders", "quiet_start", "quiet_end", "last_todo_reminder_at")
+        return [{k: self.users[i][k] for k in keys} for i in sorted(ids)]
+
+    def claim_todo_reminder(self, user_id, now, cutoff):
+        prev = self.users[user_id]["last_todo_reminder_at"]
+        if prev is not None and prev >= cutoff:
+            return False, prev
+        self.users[user_id]["last_todo_reminder_at"] = now
+        return True, prev
+
+    def release_todo_reminder(self, user_id, previous):
+        self.users[user_id]["last_todo_reminder_at"] = previous
+
     # push subscriptions
     def upsert_push_subscription(self, user_id, endpoint, p256dh, auth, user_agent=None):
         for s in self.subs:
@@ -181,6 +282,10 @@ STORE_NAMES = [
     "update_checkin", "delete_checkin", "get_users_for_deadline_check", "claim_alert", "release_alert",
     "upsert_push_subscription", "get_push_subscriptions", "count_push_subscriptions",
     "delete_push_subscription", "upload_image", "delete_image", "get_signed_url",
+    "add_task", "get_task", "list_tasks", "count_tasks_on_day", "update_task", "delete_task",
+    "task_day_counts", "get_todo_settings", "update_todo_settings", "set_widget_token_hash",
+    "get_user_by_widget_token_hash", "get_users_with_open_tasks", "claim_todo_reminder",
+    "release_todo_reminder",
 ]
 
 
@@ -208,7 +313,7 @@ class AppTestCase(unittest.TestCase):
             patch.object(main, "bootstrap_admin_if_configured", lambda: None),
             patch.dict(os.environ, {"TRUSTED_PROXY_HOPS": "1"}),
         ]
-        for module in (main, scheduler, push):
+        for module in (main, scheduler, push, todos):
             for name in STORE_NAMES:
                 if hasattr(module, name):
                     patchers.append(patch.object(module, name, getattr(self.store, name)))

@@ -8,6 +8,7 @@ python-dotenv==1.2.2
 APScheduler==3.11.3
 supabase==2.32.0
 pywebpush==2.5.0
+tzdata==2026.6
 
 # Tests only (fastapi.testclient)
 httpx==0.28.1

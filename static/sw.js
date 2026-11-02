@@ -8,7 +8,7 @@ self.addEventListener("fetch", () => {});
 self.addEventListener("push", e => {
   let data = {};
   try { data = e.data ? e.data.json() : {}; } catch (_) { data = { body: e.data ? e.data.text() : "" }; }
-  e.waitUntil(
+  const jobs = [
     self.registration.showNotification(data.title || "Man Switch", {
       body: data.body || "",
       icon: "/icon-192.png",
@@ -17,8 +17,13 @@ self.addEventListener("push", e => {
       renotify: true,
       requireInteraction: !!data.urgent,
       data: { url: data.url || "/" },
-    })
-  );
+    }),
+  ];
+  // Show the number of tasks left on the installed app's icon where the browser supports it.
+  if (typeof data.badge_count === "number" && self.navigator && "setAppBadge" in self.navigator) {
+    jobs.push(self.navigator.setAppBadge(data.badge_count).catch(() => {}));
+  }
+  e.waitUntil(Promise.all(jobs));
 });
 
 self.addEventListener("notificationclick", e => {
@@ -26,7 +31,11 @@ self.addEventListener("notificationclick", e => {
   const url = (e.notification.data && e.notification.data.url) || "/";
   e.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(list => {
-      for (const c of list) { if ("focus" in c) return c.focus(); }
+      for (const c of list) {
+        if ("focus" in c) {
+          return c.focus().then(w => (w && "navigate" in w ? w.navigate(url) : null)).catch(() => {});
+        }
+      }
       return self.clients.openWindow(url);
     })
   );

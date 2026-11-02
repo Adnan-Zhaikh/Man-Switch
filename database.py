@@ -88,6 +88,29 @@ def init_db():
         cursor.execute(
             "CREATE INDEX IF NOT EXISTS idx_push_user ON push_subscriptions (user_id)"
         )
+        cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS timezone TEXT NOT NULL DEFAULT 'UTC'")
+        cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS todo_reminders BOOLEAN NOT NULL DEFAULT TRUE")
+        cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS quiet_start SMALLINT NOT NULL DEFAULT 22")
+        cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS quiet_end SMALLINT NOT NULL DEFAULT 7")
+        cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_todo_reminder_at TEXT")
+        cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS widget_token_hash TEXT")
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_users_widget_token ON users (widget_token_hash) WHERE widget_token_hash IS NOT NULL"
+        )
+        cursor.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS tasks (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                title TEXT NOT NULL,
+                day TEXT NOT NULL,
+                priority SMALLINT NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL,
+                done_at TEXT
+            )
+            '''
+        )
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_tasks_user_day ON tasks (user_id, day)")
         cursor.execute(
             '''
             CREATE TABLE IF NOT EXISTS settings (
@@ -356,3 +379,174 @@ def delete_push_subscription(endpoint, user_id=None):
                 (endpoint, user_id),
             )
         return cursor.rowcount > 0
+
+
+# ---- to-do tasks ------------------------------------------------------------
+
+_TASK_COLUMNS = "id, title, day, priority, created_at, done_at"
+
+
+def add_task(user_id, title, day, priority=0):
+    with _cursor(dict_rows=True) as cursor:
+        cursor.execute(
+            f"INSERT INTO tasks (user_id, title, day, priority, created_at) VALUES (%s, %s, %s, %s, %s) RETURNING {_TASK_COLUMNS}",
+            (user_id, title, day, priority, _now()),
+        )
+        return dict(cursor.fetchone())
+
+
+def get_task(task_id, user_id):
+    with _cursor(dict_rows=True) as cursor:
+        cursor.execute(
+            f"SELECT {_TASK_COLUMNS} FROM tasks WHERE id = %s AND user_id = %s", (task_id, user_id)
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
+def list_tasks(user_id, start_day=None, end_day=None, only_open=False):
+    """Tasks whose planned day is within [start_day, end_day] (either bound optional)."""
+    where, params = ["user_id = %s"], [user_id]
+    if start_day:
+        where.append("day >= %s")
+        params.append(start_day)
+    if end_day:
+        where.append("day <= %s")
+        params.append(end_day)
+    if only_open:
+        where.append("done_at IS NULL")
+    with _cursor(dict_rows=True) as cursor:
+        cursor.execute(
+            f"SELECT {_TASK_COLUMNS} FROM tasks WHERE {' AND '.join(where)} ORDER BY day, priority DESC, id",
+            params,
+        )
+        return [dict(r) for r in cursor.fetchall()]
+
+
+def count_tasks_on_day(user_id, day):
+    with _cursor() as cursor:
+        cursor.execute("SELECT COUNT(*) FROM tasks WHERE user_id = %s AND day = %s", (user_id, day))
+        return cursor.fetchone()[0]
+
+
+def update_task(task_id, user_id, title=None, day=None, priority=None, done=None):
+    """Change any of the given fields. Returns the updated task, or None if it isn't theirs."""
+    sets, params = [], []
+    if title is not None:
+        sets.append("title = %s")
+        params.append(title)
+    if day is not None:
+        sets.append("day = %s")
+        params.append(day)
+    if priority is not None:
+        sets.append("priority = %s")
+        params.append(priority)
+    if done is True:
+        sets.append("done_at = COALESCE(done_at, %s)")
+        params.append(_now())
+    elif done is False:
+        sets.append("done_at = NULL")
+    if not sets:
+        return get_task(task_id, user_id)
+    with _cursor(dict_rows=True) as cursor:
+        cursor.execute(
+            f"UPDATE tasks SET {', '.join(sets)} WHERE id = %s AND user_id = %s RETURNING {_TASK_COLUMNS}",
+            (*params, task_id, user_id),
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
+def delete_task(task_id, user_id):
+    with _cursor() as cursor:
+        cursor.execute("DELETE FROM tasks WHERE id = %s AND user_id = %s", (task_id, user_id))
+        return cursor.rowcount > 0
+
+
+def task_day_counts(user_id, start_day, end_day):
+    """Per planned day: how many tasks were planned and how many of those got done."""
+    with _cursor(dict_rows=True) as cursor:
+        cursor.execute(
+            '''
+            SELECT day, COUNT(*) AS planned, COUNT(done_at) AS done
+            FROM tasks
+            WHERE user_id = %s AND day >= %s AND day <= %s
+            GROUP BY day ORDER BY day
+            ''',
+            (user_id, start_day, end_day),
+        )
+        return [{"day": r["day"], "planned": int(r["planned"]), "done": int(r["done"])} for r in cursor.fetchall()]
+
+
+# ---- to-do settings, widget token, reminders --------------------------------
+
+
+def get_todo_settings(user_id):
+    with _cursor(dict_rows=True) as cursor:
+        cursor.execute(
+            "SELECT timezone, todo_reminders, quiet_start, quiet_end, (widget_token_hash IS NOT NULL) AS widget_configured FROM users WHERE id = %s",
+            (user_id,),
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
+def update_todo_settings(user_id, timezone_name=None, todo_reminders=None, quiet_start=None, quiet_end=None):
+    sets, params = [], []
+    for column, value in (
+        ("timezone", timezone_name),
+        ("todo_reminders", todo_reminders),
+        ("quiet_start", quiet_start),
+        ("quiet_end", quiet_end),
+    ):
+        if value is not None:
+            sets.append(f"{column} = %s")
+            params.append(value)
+    if not sets:
+        return
+    with _cursor() as cursor:
+        cursor.execute(f"UPDATE users SET {', '.join(sets)} WHERE id = %s", (*params, user_id))
+
+
+def set_widget_token_hash(user_id, token_hash):
+    with _cursor() as cursor:
+        cursor.execute("UPDATE users SET widget_token_hash = %s WHERE id = %s", (token_hash, user_id))
+
+
+def get_user_by_widget_token_hash(token_hash):
+    with _cursor(dict_rows=True) as cursor:
+        cursor.execute("SELECT id, timezone FROM users WHERE widget_token_hash = %s", (token_hash,))
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
+def get_users_with_open_tasks():
+    """Users who have at least one unfinished task (planned today or earlier is decided by the caller)."""
+    with _cursor(dict_rows=True) as cursor:
+        cursor.execute(
+            '''
+            SELECT u.id, u.timezone, u.todo_reminders, u.quiet_start, u.quiet_end, u.last_todo_reminder_at
+            FROM users u
+            WHERE EXISTS (SELECT 1 FROM tasks t WHERE t.user_id = u.id AND t.done_at IS NULL)
+            '''
+        )
+        return [dict(r) for r in cursor.fetchall()]
+
+
+def claim_todo_reminder(user_id, now_iso, cutoff_iso):
+    """Like claim_alert, but for the 'tasks left' reminder. Returns (claimed, previous)."""
+    with _cursor() as cursor:
+        cursor.execute("SELECT last_todo_reminder_at FROM users WHERE id = %s FOR UPDATE", (user_id,))
+        row = cursor.fetchone()
+        if row is None:
+            return False, None
+        previous = row[0]
+        if previous is not None and previous >= cutoff_iso:
+            return False, previous
+        cursor.execute("UPDATE users SET last_todo_reminder_at = %s WHERE id = %s", (now_iso, user_id))
+        return True, previous
+
+
+def release_todo_reminder(user_id, previous):
+    with _cursor() as cursor:
+        cursor.execute("UPDATE users SET last_todo_reminder_at = %s WHERE id = %s", (previous, user_id))

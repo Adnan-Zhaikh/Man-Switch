@@ -52,6 +52,7 @@ from push import is_configured as push_is_configured
 from push import public_key as push_public_key
 from push import send_to_user, validate_subscription
 from ratelimit import RateLimiter
+import todos
 from scheduler import ALERT_REPEAT_MINUTES, DEADLINE_HOURS, is_deadline_exceeded, run_tick
 from storage import delete_image, get_signed_url, upload_image
 
@@ -517,6 +518,21 @@ def history(category: str = None, user=Depends(get_current_user)):
 
 
 # ---------------------------------------------------------------------------
+# To-do list
+# ---------------------------------------------------------------------------
+
+app.include_router(todos.build_router(get_current_user, enforce, write_limiter, client_ip, _too_many))
+
+
+@app.get("/todo")
+def todo_page(request: Request):
+    user_id = get_session_user_id(request)
+    if user_id is None or not get_user_by_id(user_id):
+        return RedirectResponse("/", status_code=303)
+    return FileResponse(STATIC_DIR / "todo.html", headers=NO_STORE)
+
+
+# ---------------------------------------------------------------------------
 # Push notifications (browser Web Push)
 # ---------------------------------------------------------------------------
 
@@ -616,7 +632,7 @@ async def tick(request: Request):
     if request.method == "HEAD":
         return Response(status_code=200)
     result = await run_in_threadpool(run_tick, "cron")
-    return {k: result.get(k) for k in ("overdue", "alerted", "no_device", "errors", "skipped") if k in result} | {"ok": True}
+    return {k: result.get(k) for k in ("overdue", "alerted", "no_device", "reminded", "errors", "skipped") if k in result} | {"ok": True}
 
 
 # ---------------------------------------------------------------------------

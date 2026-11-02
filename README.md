@@ -110,6 +110,7 @@ SESSION_HTTPS_ONLY=true      # set this in production so the session cookie is S
 TRUSTED_PROXY_HOPS=1         # proxies in front of the app (Render: 1, local: 0)
 DEADLINE_HOURS=24
 ALERT_REPEAT_MINUTES=60
+TODO_REMINDER_HOURS=4
 TICK_MINUTES=5
 REGISTRATION_OPEN=true
 SESSION_MAX_AGE_SECONDS=43200
@@ -136,7 +137,24 @@ python -m uvicorn main:app --reload
 
 Open `http://127.0.0.1:8000/` and register a new account (or log in).
 
-## Admin page
+## To-do list
+
+Open it from the **To-do** link in the top bar, or go to `/todo`.
+
+- **Add tasks** for today or tomorrow, mark them done, star the important ones, edit or delete them. Unfinished tasks stay visible as **Overdue** until you finish them or move them to today with one tap.
+- **Reminders:** while tasks are left, you get a ⚠️ push notification about every 4 hours (`TODO_REMINDER_HOURS`) listing what's not done. They pause during **quiet hours** (22:00 to 07:00 by default, changeable in the Settings tab) and can be switched off. The timer starts from when the oldest unfinished task was added, or from the last reminder, whichever is later. Tapping the notification opens the To-do page.
+- **History and stats:** every task is kept with the day it was planned for. The **Stats** tab shows a bar chart for the last 7 or 30 days (blue = done, grey = planned), completion rate, streak, daily average and best day. Tap a day to see its tasks. A task counts for the day it was planned, even if you finish it later.
+- **Time zone:** days and quiet hours follow your phone's time zone, which the page reports automatically.
+- **Badge:** on browsers that support it, the installed app icon shows how many tasks are left.
+
+### Android home-screen widget
+
+A website can't put a widget on your home screen; that needs a native Android app. The workable options:
+
+1. **Widget app (works today).** In the To-do **Settings** tab tap **Create widget link**. The link returns only your counts (for example `3 done · 2 left`), never task names. Add a widget in an app that can read a web address, such as KWGT (Kustom Widget Maker), and point a text element at the link. The link is a private token: **Revoke** it from the same screen, and creating a new one replaces the old one. The link is shown once, so copy it right away.
+2. **Native app (later).** A small Android app with a real widget could read the same endpoint, `GET /widget/summary`. It would be a separate Android Studio project.
+
+
 
 Signed in as the admin, an **Admin** link appears in the top bar (or go to `/admin`). It shows when the last deadline check ran and what it did, whether alerts and the cron hook are configured, and every account with its entry count, last check-in, number of alert devices and an *overdue* badge. You can run a check now, send yourself a test alert, open or close registration, and delete an account (its photos are removed too). It never shows anyone's entries or photos. The page also shows the client address the app detects, so you can confirm `TRUSTED_PROXY_HOPS` is right.
 
@@ -148,9 +166,10 @@ Signed in as the admin, an **Admin** link appears in the top bar (or go to `/adm
 | Login attempts, per IP | 30 per 10 minutes |
 | Failed logins | 8 per 15 minutes for one IP and username, 40 per 15 minutes for one username from anywhere |
 | Registrations, per IP | 5 per hour |
-| Creating, editing, deleting entries, per user | 60 per minute |
+| Creating, editing, deleting entries or tasks, per user | 60 per minute |
 | Adding devices, per user | 20 per hour; test alerts 5 per 10 minutes |
 | Wrong cron key, per IP | 10 per 5 minutes |
+| Wrong widget token, per IP | 20 per 10 minutes |
 
 Over a limit the API returns `429` with a `Retry-After` header. Counters live in memory, so they reset on restart and aren't shared between workers.
 
@@ -177,6 +196,13 @@ Environment variables (see above): `DEADLINE_HOURS` is how long you can go witho
 | `/push/test` | POST | Yes | Sends a test alert to your devices |
 | `/internal/tick` | GET, POST, HEAD | Cron secret | Runs the deadline check. `Authorization: Bearer <CRON_SECRET>` (or `?key=`) |
 | `/admin`, `/admin/api/*` | various | Admin | Owner-only page and its API |
+| `/todo` | GET | Yes | The to-do page |
+| `/todos`, `/todos/{id}` | GET, POST, PATCH, DELETE | Yes | Tasks. `GET /todos` returns overdue, today and tomorrow plus the done/left summary |
+| `/todos/day/{YYYY-MM-DD}` | GET | Yes | Tasks planned for one day (history) |
+| `/todos/stats?range=week|month` | GET | Yes | Per-day totals, completion rate, streak |
+| `/todos/settings` | GET, PUT | Yes | Reminders on/off, quiet hours, time zone |
+| `/todos/widget-token` | POST, DELETE | Yes | Create (replacing the old one) or revoke the widget link |
+| `/widget/summary?token=&format=json|text` | GET | Widget token | Read-only done/left counts for a widget app |
 | `/health` | GET, HEAD | No | Cheap liveness check (does not touch the database) |
 
 ## Deployment (Render)

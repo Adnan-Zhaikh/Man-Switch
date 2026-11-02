@@ -102,7 +102,7 @@ function render(){
   if(t){tickText=ago(t.at)+" ("+t.source+")";tickCls=(Date.now()-new Date(t.at).getTime())<(s.tick_minutes*3+10)*60000?"ok":"warn"}
   $("status").innerHTML=[
     kv("Last deadline check",tickText,tickCls),
-    kv("Last result",t?`${t.overdue} overdue, ${t.alerted} alerted, ${t.no_device} without a device, ${t.errors} errors`:"-",t&&t.errors?"bad":""),
+    kv("Last result",t?`${t.overdue} overdue, ${t.alerted} alerted, ${t.no_device} without a device, ${t.reminded||0} task reminders, ${t.errors} errors`:"-",t&&t.errors?"bad":""),
     kv("Browser alerts",s.push_configured?"Configured":"Not configured (set VAPID_* keys)",s.push_configured?"ok":"bad"),
     kv("External cron hook",s.cron_configured?"Enabled":"Off (set CRON_SECRET)",s.cron_configured?"ok":"warn"),
     kv("Deadline",s.deadline_hours+" h, re-alert every "+s.repeat_minutes+" min"),
@@ -131,7 +131,7 @@ async function load(){
 
 $("tickBtn").onclick=async()=>{
   const b=$("tickBtn");b.disabled=true;say("Checking...");
-  try{const r=await api("/admin/api/tick",{method:"POST"});say(r.skipped?"A check was already running.":`Done: ${r.overdue} overdue, ${r.alerted} alerted, ${r.no_device} without a device, ${r.errors} errors.`);await load()}
+  try{const r=await api("/admin/api/tick",{method:"POST"});say(r.skipped?"A check was already running.":`Done: ${r.overdue} overdue, ${r.alerted} alerted, ${r.no_device} without a device, ${r.reminded||0} task reminders, ${r.errors} errors.`);await load()}
   catch(e){say(e.message)}finally{b.disabled=false}
 };
 $("testBtn").onclick=async()=>{
