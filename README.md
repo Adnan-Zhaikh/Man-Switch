@@ -10,7 +10,7 @@ I wanted one private place to write down what's happening and keep things worth 
 
 ## What it does
 
-Posts live on three pages:
+The app has a menu bar (bottom bar on phones, sidebar on desktop) with **Journal, Habits, Tasks / Goals, Important and More**. Account, alerts, theme, the To-do link and Admin live under **More**, so the journal page stays clean. Posts live on three pages:
 
 - **Journal:** casual notes and day-to-day thoughts
 - **Tasks / Goals:** what I'm working on and what's next
@@ -137,6 +137,18 @@ python -m uvicorn main:app --reload
 
 Open `http://127.0.0.1:8000/` and register a new account (or log in).
 
+## Habits (daily streaks)
+
+Open **Habits** from the menu bar. It works like a GitHub contribution graph: each habit has a grid of days, and every day you finish it you add a **commit**.
+
+- **Add a habit** with a name, an icon, a colour and the weekdays it repeats on (every day by default). Tap a habit's icon to edit or delete it.
+- **Commit** a day with the round tick button. Tap it again to undo. The note button commits with an optional **commit message** (up to 200 characters) so you can write what you did.
+- **Streak** counts consecutive *scheduled* days. Days a habit isn't scheduled never break a streak, and today doesn't break it until the day is over. The card also shows total commits and your best streak.
+- **Week strip:** the last 14 days, each with a ring showing how many due habits you finished. Tap a day (or a square in a grid) to look at or fix it. Missed days can be committed up to 30 days back; future days can't.
+- **Filter:** *All* or *Due* (scheduled on the selected day and not committed yet).
+- **Habit score:** share of scheduled days you committed in the last 30 days.
+- Days follow your phone's time zone, the same setting the To-do page uses. Up to 20 habits per account. Habit commits do **not** reset the dead-man's-switch deadline; only journal, task and important posts do.
+
 ## To-do list
 
 Open it from the **To-do** link in the top bar, or go to `/todo`.
@@ -203,6 +215,9 @@ Environment variables (see above): `DEADLINE_HOURS` is how long you can go witho
 | `/todos/settings` | GET, PUT | Yes | Reminders on/off, quiet hours, time zone |
 | `/todos/widget-token` | POST, DELETE | Yes | Create (replacing the old one) or revoke the widget link |
 | `/widget/summary?token=&format=json|text` | GET | Widget token | Read-only done/left counts for a widget app |
+| `/habits` | GET, POST | Yes | GET returns today, score, the 14-day strip and every habit with streaks and commit history. POST creates one (`name`, `icon`, `color`, `days`) |
+| `/habits/{id}` | PATCH, DELETE | Yes | Edit a habit, or delete it together with its commits |
+| `/habits/{id}/logs/{YYYY-MM-DD}` | PUT | Yes | Commit that day (`done: true`, optional `note`) or undo it (`done: false`). Last 30 days only, never the future |
 | `/health` | GET, HEAD | No | Cheap liveness check (does not touch the database) |
 
 ## Deployment (Render)
@@ -253,6 +268,8 @@ This is the best a free tier can do. For something you really depend on, a paid 
 ## Roadmap
 
 - [x] Edit and delete entries
+- [x] Habit streaks with a GitHub-style commit grid
+- [ ] Habit reminders (push notification when a habit is still due in the evening)
 - [ ] Calendar and stats views (streak counter, check-in frequency, entries per category)
 - [ ] Tabs inside the Important page
 - [ ] Full-text search across all entries

@@ -12,6 +12,7 @@ import main  # noqa: E402
 import push  # noqa: E402
 import ratelimit  # noqa: E402
 import scheduler  # noqa: E402
+import habits  # noqa: E402
 import todo_logic  # noqa: E402
 import todos  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
@@ -30,6 +31,7 @@ class FakeStore:
     def __init__(self):
         self.users, self.checkins, self.subs, self.settings = {}, {}, [], {}
         self.tasks, self.next_task = {}, 1
+        self.habits, self.next_habit, self.habit_logs = {}, 1, {}
         self.next_user, self.next_checkin = 1, 1
         self.uploads, self.deleted_images = [], []
 
@@ -79,6 +81,8 @@ class FakeStore:
         self.checkins = {k: c for k, c in self.checkins.items() if c["user_id"] != user_id}
         self.subs = [s for s in self.subs if s["user_id"] != user_id]
         self.tasks = {k: t for k, t in self.tasks.items() if t["user_id"] != user_id}
+        self.habits = {k: h for k, h in self.habits.items() if h["user_id"] != user_id}
+        self.habit_logs = {k: v for k, v in self.habit_logs.items() if v["user_id"] != user_id}
         del self.users[user_id]
         return True, paths
 
@@ -241,6 +245,60 @@ class FakeStore:
     def release_todo_reminder(self, user_id, previous):
         self.users[user_id]["last_todo_reminder_at"] = previous
 
+    # habits
+    _HABIT_KEYS = ("id", "name", "icon", "color", "days", "created_day", "created_at")
+
+    def add_habit(self, user_id, name, icon, color, days, created_day):
+        h = {"id": self.next_habit, "user_id": user_id, "name": name, "icon": icon, "color": color,
+             "days": days, "created_day": created_day, "created_at": now_iso()}
+        self.habits[h["id"]] = h
+        self.next_habit += 1
+        return {k: h[k] for k in self._HABIT_KEYS}
+
+    def get_habit(self, habit_id, user_id):
+        h = self.habits.get(habit_id)
+        return {k: h[k] for k in self._HABIT_KEYS} if h and h["user_id"] == user_id else None
+
+    def list_habits(self, user_id):
+        return [{k: h[k] for k in self._HABIT_KEYS} for h in self.habits.values() if h["user_id"] == user_id]
+
+    def count_habits(self, user_id):
+        return len(self.list_habits(user_id))
+
+    def update_habit(self, habit_id, user_id, name=None, icon=None, color=None, days=None):
+        h = self.habits.get(habit_id)
+        if not h or h["user_id"] != user_id:
+            return None
+        for key, val in (("name", name), ("icon", icon), ("color", color), ("days", days)):
+            if val is not None:
+                h[key] = val
+        return {k: h[k] for k in self._HABIT_KEYS}
+
+    def delete_habit(self, habit_id, user_id):
+        h = self.habits.get(habit_id)
+        if not h or h["user_id"] != user_id:
+            return False
+        del self.habits[habit_id]
+        self.habit_logs = {k: v for k, v in self.habit_logs.items() if k[0] != habit_id}
+        return True
+
+    def set_habit_log(self, habit_id, user_id, day, note=None):
+        row = self.habit_logs.setdefault((habit_id, day), {"user_id": user_id, "habit_id": habit_id, "day": day, "note": ""})
+        if note is not None:
+            row["note"] = note
+        return {"day": day, "note": row["note"]}
+
+    def delete_habit_log(self, habit_id, user_id, day):
+        row = self.habit_logs.get((habit_id, day))
+        if not row or row["user_id"] != user_id:
+            return False
+        del self.habit_logs[(habit_id, day)]
+        return True
+
+    def list_habit_logs(self, user_id):
+        rows = [v for v in self.habit_logs.values() if v["user_id"] == user_id]
+        return sorted(({"habit_id": v["habit_id"], "day": v["day"], "note": v["note"]} for v in rows), key=lambda r: r["day"])
+
     # push subscriptions
     def upsert_push_subscription(self, user_id, endpoint, p256dh, auth, user_agent=None):
         for s in self.subs:
@@ -286,6 +344,8 @@ STORE_NAMES = [
     "task_day_counts", "get_todo_settings", "update_todo_settings", "set_widget_token_hash",
     "get_user_by_widget_token_hash", "get_users_with_open_tasks", "claim_todo_reminder",
     "release_todo_reminder",
+    "add_habit", "get_habit", "list_habits", "count_habits", "update_habit", "delete_habit",
+    "set_habit_log", "delete_habit_log", "list_habit_logs",
 ]
 
 
@@ -313,7 +373,7 @@ class AppTestCase(unittest.TestCase):
             patch.object(main, "bootstrap_admin_if_configured", lambda: None),
             patch.dict(os.environ, {"TRUSTED_PROXY_HOPS": "1"}),
         ]
-        for module in (main, scheduler, push, todos):
+        for module in (main, scheduler, push, todos, habits):
             for name in STORE_NAMES:
                 if hasattr(module, name):
                     patchers.append(patch.object(module, name, getattr(self.store, name)))

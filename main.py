@@ -52,6 +52,7 @@ from push import is_configured as push_is_configured
 from push import public_key as push_public_key
 from push import send_to_user, validate_subscription
 from ratelimit import RateLimiter
+import habits
 import todos
 from scheduler import ALERT_REPEAT_MINUTES, DEADLINE_HOURS, is_deadline_exceeded, run_tick
 from storage import delete_image, get_signed_url, upload_image
@@ -522,6 +523,7 @@ def history(category: str = None, user=Depends(get_current_user)):
 # ---------------------------------------------------------------------------
 
 app.include_router(todos.build_router(get_current_user, enforce, write_limiter, client_ip, _too_many))
+app.include_router(habits.build_router(get_current_user, enforce, write_limiter))
 
 
 @app.get("/todo")

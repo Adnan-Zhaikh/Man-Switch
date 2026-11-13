@@ -9,10 +9,12 @@
 <link rel="icon" href="/icon-192.png">
 <style>
 :root{--serif:Georgia,"Times New Roman",serif;--sans:system-ui,-apple-system,"Segoe UI",sans-serif}
-:root[data-theme="dark"][data-page="journal"]{--bg:#120c1e;--sf:#1b1330;--ln:#322350;--ac:#b08cf6;--ak:#1b0d33;--mu:#9a8db5;--tx:#ece6f8}
+:root[data-theme="dark"][data-page="journal"],:root[data-theme="dark"][data-page="more"]{--bg:#120c1e;--sf:#1b1330;--ln:#322350;--ac:#b08cf6;--ak:#1b0d33;--mu:#9a8db5;--tx:#ece6f8}
 :root[data-theme="dark"][data-page="task"]{--bg:#0a1512;--sf:#10211d;--ln:#1f3d35;--ac:#5fd9a8;--ak:#06231a;--mu:#82a89c;--tx:#e4f4ee}
 :root[data-theme="dark"][data-page="important"]{--bg:#140e0b;--sf:#1f1511;--ln:#43291d;--ac:#f08a4b;--ak:#2a1204;--mu:#b39685;--tx:#f6ebe4}
-:root[data-theme="light"][data-page="journal"]{--bg:#f6f2ff;--sf:#fff;--ln:#e2d8f5;--ac:#6d3fd1;--ak:#fff;--mu:#7b6e96;--tx:#241838}
+:root[data-theme="dark"][data-page="habits"]{--bg:#0b0a06;--sf:#15130b;--ln:#2e2a14;--ac:#e5c33a;--ak:#241c02;--mu:#a39a74;--tx:#f4efdc}
+:root[data-theme="light"][data-page="habits"]{--bg:#fbf7e8;--sf:#fff;--ln:#eadfb4;--ac:#a67c00;--ak:#fff;--mu:#85774a;--tx:#2e2508}
+:root[data-theme="light"][data-page="journal"],:root[data-theme="light"][data-page="more"]{--bg:#f6f2ff;--sf:#fff;--ln:#e2d8f5;--ac:#6d3fd1;--ak:#fff;--mu:#7b6e96;--tx:#241838}
 :root[data-theme="light"][data-page="task"]{--bg:#eef8f4;--sf:#fff;--ln:#cfe8de;--ac:#14815d;--ak:#fff;--mu:#5d8074;--tx:#10281f}
 :root[data-theme="light"][data-page="important"]{--bg:#fdf4ee;--sf:#fff;--ln:#f1d9c8;--ac:#bf4f12;--ak:#fff;--mu:#94705a;--tx:#33180a}
 *{box-sizing:border-box}
@@ -34,7 +36,8 @@ body{margin:0;background:var(--bg);color:var(--tx);font-family:var(--sans);line-
 .side{position:sticky;top:0;height:100vh;padding:26px 14px;border-right:1px solid var(--ln)}
 .brand{font-family:var(--serif);font-size:22px;color:var(--ac);padding:0 10px 14px}
 nav{display:flex;flex-direction:column;gap:6px}
-nav button{background:none;border:0;border-radius:10px;color:var(--mu);font:inherit;font-size:15px;text-align:left;padding:11px 12px;cursor:pointer}
+nav button{display:flex;align-items:center;gap:12px;background:none;border:0;border-radius:10px;color:var(--mu);font:inherit;font-size:15px;text-align:left;padding:11px 12px;cursor:pointer}
+nav button svg{width:22px;height:22px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 nav button.on{color:var(--ac);font-weight:700;background:color-mix(in srgb,var(--ac) 15%,transparent)}
 main{padding:24px 22px;max-width:660px;width:100%}
 .top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
@@ -81,13 +84,77 @@ textarea:focus{outline:none}
 .modal-btn:hover{color:var(--ac);border-color:var(--ac)}
 .modal-btn.save{background:var(--ac);color:var(--ak);border:0;font-weight:700}
 .modal-btn.save:disabled{opacity:.45;cursor:default}
+
+/* ---- More page ---- */
+.group{background:var(--sf);border:1px solid var(--ln);border-radius:16px;padding:6px 16px;margin-bottom:14px}
+.line{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--ln);flex-wrap:wrap}
+.line:last-child{border-bottom:0}
+.line .what{color:var(--tx)}
+.line .what small{display:block;color:var(--mu);font-size:12.5px}
+.group h3{font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:var(--mu);font-weight:600;margin:14px 0 0}
+#notifyHint{margin:0 0 12px}
+/* ---- Habits ---- */
+.hbar{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:4px 0 12px}
+#hTitle{font-family:var(--sans);font-weight:700;font-size:26px;line-height:1.15;margin:0;color:var(--tx)}
+#hTitle em{font-style:normal;color:var(--mu);font-weight:600}
+.pill{background:var(--ac);color:var(--ak);border:0;border-radius:20px;padding:8px 16px;font:inherit;font-weight:700;font-size:14px;cursor:pointer;white-space:nowrap}
+.strip{display:flex;gap:4px;overflow-x:auto;padding:4px 0 10px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.strip::-webkit-scrollbar{display:none}
+.dy{flex:0 0 auto;width:56px;background:none;border:0;color:var(--mu);font:inherit;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;padding:0}
+.dy .dl{font-size:13px}
+.dy[aria-pressed="true"] .dl{color:var(--tx);font-weight:700}
+.ring{position:relative;width:46px;height:46px}
+.ring svg{width:46px;height:46px;transform:rotate(-90deg)}
+.ring b{position:absolute;inset:0;display:grid;place-items:center;font-size:15px;font-weight:600;color:var(--tx)}
+.ring .trk{stroke:var(--ln)}
+.dy[aria-pressed="true"] .trk{stroke:var(--mu)}
+.hrow{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;margin:6px 0 14px}
+.lbl{font-size:12.5px;color:var(--mu);margin-bottom:6px;letter-spacing:.04em}
+.seg2{display:inline-flex;border:1px solid var(--ln);border-radius:12px;overflow:hidden}
+.seg2 button{background:none;border:0;color:var(--tx);font:inherit;font-size:14px;padding:8px 14px;cursor:pointer}
+.seg2 button[aria-pressed="true"]{background:var(--ac);color:var(--ak);font-weight:700}
+.score{border:1px solid var(--ln);border-radius:12px;padding:8px 14px;font-weight:600;white-space:nowrap}
+#hMsg{min-height:18px;font-size:13px;color:var(--ac);margin-bottom:6px}
+.habit{background:var(--sf);border:1px solid var(--ln);border-radius:20px;padding:16px;margin-bottom:14px}
+.h-head{display:flex;align-items:center;gap:10px}
+.h-icon{width:46px;height:46px;border-radius:50%;border:0;background:color-mix(in srgb,var(--hc) 18%,var(--bg));font-size:22px;cursor:pointer;flex:none;display:grid;place-items:center;padding:0}
+.h-info{flex:1;min-width:0}
+.h-name{font-size:18px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.h-streak{font-size:13.5px;color:var(--mu)}
+.h-btn{width:46px;height:46px;border-radius:50%;border:0;flex:none;cursor:pointer;display:grid;place-items:center;padding:0;background:color-mix(in srgb,var(--hc) 14%,var(--bg));color:color-mix(in srgb,var(--hc) 80%,var(--tx))}
+.h-btn.on{background:var(--hc);color:#fff}
+.h-btn svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.h-grid{display:grid;grid-auto-flow:column;grid-template-rows:repeat(7,auto);gap:3px;margin-top:14px}
+.c{display:block;aspect-ratio:1;border-radius:3px;background:color-mix(in srgb,var(--hc) 14%,var(--sf));cursor:pointer}
+.c.off{background:color-mix(in srgb,var(--hc) 6%,var(--sf))}
+.c.on{background:var(--hc)}
+.c.f{background:transparent;cursor:default}
+.c.sel{outline:2px solid var(--tx);outline-offset:1px}
+.h-cap:empty{display:none}
+.h-cap{font-size:12.5px;color:var(--mu);min-height:18px;margin-top:8px}
+.fl{font-size:13px;color:var(--mu);margin:12px 0 6px}
+.fi{width:100%;border:1px solid var(--ln);border-radius:10px;padding:10px 12px;background:var(--bg);color:var(--tx);font:inherit}
+textarea.fi{min-height:84px;resize:none;font-size:16px}
+.picks{display:flex;flex-wrap:wrap;gap:8px}
+.pk{width:40px;height:40px;border-radius:50%;border:2px solid transparent;background:var(--bg);font-size:20px;cursor:pointer;padding:0;display:grid;place-items:center}
+.pk[aria-pressed="true"]{border-color:var(--ac)}
+.pk.sw{border-color:transparent;background:var(--sw)}
+.pk.sw[aria-pressed="true"]{border-color:var(--tx)}
+.dayrow{display:flex;gap:6px}
+.dc{flex:1;border:1px solid var(--ln);border-radius:10px;background:none;color:var(--mu);font:inherit;font-size:13px;padding:8px 0;cursor:pointer}
+.dc[aria-pressed="true"]{background:var(--ac);color:var(--ak);border-color:var(--ac);font-weight:700}
+.mmsg{font-size:13px;color:var(--ac);min-height:18px;margin:10px 0}
+.modal-btn.danger{color:#ff7a7a;border-color:#ff7a7a}
+.cm-sub{margin:-8px 0 12px;color:var(--mu);font-size:14px}
 @media (max-width:759px){
   #authShell{margin-top:4vh}
   .app{display:block}
   .side{position:fixed;top:auto;bottom:0;left:0;right:0;height:auto;padding:0 0 env(safe-area-inset-bottom);border:0;border-top:1px solid var(--ln);background:var(--sf);z-index:9}
   .brand{display:none}.mbrand{display:block}
   nav{flex-direction:row;gap:0}
-  nav button{flex:1;text-align:center;border-radius:0;padding:15px 4px}
+  nav button{flex:1;flex-direction:column;justify-content:center;gap:3px;font-size:11px;text-align:center;border-radius:0;padding:9px 2px 8px}
+  nav button.on{background:none}
+  #hTitle{font-size:23px}
   main{padding:18px 16px 96px}
   h1{font-size:34px}
 }
@@ -126,25 +193,19 @@ textarea:focus{outline:none}
     <div class="side">
       <div class="brand">Man Switch</div>
       <nav id="nav">
-        <button data-page="journal" class="on">Journal</button>
-        <button data-page="task">Tasks / Goals</button>
-        <button data-page="important">Important</button>
+        <button data-page="journal" class="on"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M9 4v16"/></svg><span>Journal</span></button>
+        <button data-page="habits"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c.6 3 4.5 5 4.5 9.5a4.5 4.5 0 0 1-9 0c0-1.8.9-3 2-4 0 1.8.8 2.8 1.8 2.8C11.3 8.8 10.9 5.6 12 3z"/></svg><span>Habits</span></button>
+        <button data-page="task"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6h10M10 12h10M10 18h10"/><path d="m3.5 6 1.5 1.5L7.5 5M3.5 12l1.5 1.5L7.5 11M3.5 18l1.5 1.5L7.5 17"/></svg><span>Tasks / Goals</span></button>
+        <button data-page="important"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg><span>Important</span></button>
+        <button data-page="more"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg><span>More</span></button>
       </nav>
     </div>
 
     <main>
-      <div class="top">
-        <span class="mbrand">Man Switch</span>
-        <span id="userBadge"></span>
-        <a id="todoLink" href="/todo">To-do</a>
-        <a id="adminLink" class="hidden" href="/admin">Admin</a>
-        <button id="notifyBtn" type="button" disabled>Alerts</button>
-        <button id="notifyTest" class="hidden" type="button">Test</button>
-        <button id="themeBtn" type="button">Light</button>
-        <button id="logoutBtn" type="button">Logout</button>
-      </div>
-      <p id="notifyHint" role="status"></p>
-      <h1 id="title"></h1>
+      <div class="top"><span class="mbrand">Man Switch</span></div>
+
+      <div id="postsView">
+        <h1 id="title"></h1>
       <p class="sub" id="sub"></p>
 
       <section class="composer">
@@ -163,6 +224,48 @@ textarea:focus{outline:none}
       </section>
 
       <div id="feed"><div class="empty">Loading...</div></div>
+          </div>
+
+      <div id="habitsView" class="hidden">
+        <div class="hbar">
+          <h1 id="hTitle"></h1>
+          <button class="pill" id="hAdd" type="button">+ New habit</button>
+        </div>
+        <div class="strip" id="hStrip" role="group" aria-label="Pick a day"></div>
+        <div class="hrow">
+          <div>
+            <div class="lbl">Filter</div>
+            <div class="seg2" role="group" aria-label="Filter habits">
+              <button type="button" id="fAll" aria-pressed="true">All</button>
+              <button type="button" id="fDue" aria-pressed="false">Due</button>
+            </div>
+          </div>
+          <div>
+            <div class="lbl" style="text-align:right">Habit score</div>
+            <div class="score" id="hScore" title="Share of scheduled days you committed in the last 30 days">0%</div>
+          </div>
+        </div>
+        <div id="hMsg" role="status" aria-live="polite"></div>
+        <div id="habitList"><div class="empty">Loading...</div></div>
+      </div>
+
+      <div id="moreView" class="hidden">
+        <h1>More</h1>
+        <p class="sub">Account, alerts and the rest.</p>
+        <div class="group">
+          <div class="line"><span class="what">Signed in<small id="userBadge"></small></span><button id="logoutBtn" type="button">Logout</button></div>
+          <div class="line"><span class="what">Appearance<small>Dark or light mode</small></span><button id="themeBtn" type="button">Light</button></div>
+        </div>
+        <div class="group">
+          <div class="line"><span class="what">Missed check-in alerts<small>Push notifications on this device</small></span>
+            <span style="display:flex;gap:8px"><button id="notifyBtn" type="button" disabled>Alerts</button><button id="notifyTest" class="hidden" type="button">Test</button></span></div>
+        </div>
+        <p id="notifyHint" role="status"></p>
+        <div class="group">
+          <div class="line"><span class="what">To-do list<small>Daily tasks, reminders and stats</small></span><a id="todoLink" href="/todo">Open</a></div>
+          <div class="line hidden" id="adminLine"><span class="what">Admin<small>Accounts and system status</small></span><a id="adminLink" href="/admin">Open</a></div>
+        </div>
+      </div>
     </main>
   </div>
 </div>
@@ -192,13 +295,44 @@ textarea:focus{outline:none}
   </div>
 </div>
 
+<div id="habitModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="hmTitle">
+  <div class="modal-content">
+    <h2 id="hmTitle">New habit</h2>
+    <label class="fl" for="hmName" style="margin-top:0">Name</label>
+    <input id="hmName" class="fi" maxlength="60" autocomplete="off" placeholder="e.g. Gym, Read 20 pages">
+    <div class="fl">Icon</div><div id="hmIcons" class="picks"></div>
+    <div class="fl">Colour</div><div id="hmColors" class="picks"></div>
+    <div class="fl">Repeat on</div><div id="hmDays" class="dayrow"></div>
+    <div id="hmMsg" class="mmsg" role="status"></div>
+    <div class="modal-actions">
+      <button class="modal-btn danger hidden" id="hmDelete" type="button">Delete</button>
+      <span class="sp"></span>
+      <button class="modal-btn" id="hmCancel" type="button">Cancel</button>
+      <button class="modal-btn save" id="hmSave" type="button">Save</button>
+    </div>
+  </div>
+</div>
+
+<div id="commitModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="cmTitle">
+  <div class="modal-content">
+    <h2 id="cmTitle">Commit</h2>
+    <p class="cm-sub" id="cmSub"></p>
+    <textarea id="cmNote" class="fi" maxlength="200" placeholder="Commit message (optional): what did you do?"></textarea>
+    <div id="cmMsg" class="mmsg" role="status"></div>
+    <div class="modal-actions">
+      <button class="modal-btn" id="cmCancel" type="button">Cancel</button>
+      <button class="modal-btn save" id="cmSave" type="button">Commit</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const COPY={
   journal:{t:"Journal",s:"Your thoughts, progress and everything in between.",ph:"What's on your mind today?",hint:""},
   task:{t:"Tasks / Goals",s:"Turn your plans into progress.",ph:"What are you working on, and what's next?",hint:""},
   important:{t:"Important saved",s:"Your links, notes and important stuff in one place.",ph:"Save a link, number or note",hint:"Keep real passwords in a password manager, not here."}
 };
-let page="journal",file=null,editingId=null,editFile=null,editRemove=false,authMode="login",currentUser=null;
+let page=(()=>{try{const p=localStorage.getItem("page");return["journal","habits","task","important","more"].includes(p)?p:"journal"}catch(e){return"journal"}})(),file=null,editingId=null,editFile=null,editRemove=false,authMode="login",currentUser=null;
 const $=id=>document.getElementById(id);
 const root=document.documentElement;
 
@@ -212,6 +346,7 @@ $("themeBtn").onclick=()=>setTheme(root.dataset.theme==="dark"?"light":"dark");
 
 function showAuth(){
   closeEditModal();
+  habitsReset();
   $("appShell").classList.add("hidden");
   $("authShell").classList.remove("hidden");
   $("authMsg").textContent="";
@@ -220,7 +355,7 @@ function showAuth(){
 function showApp(user){
   currentUser=user;
   $("userBadge").textContent=user?.username?`@${user.username}`:"";
-  $("adminLink").classList.toggle("hidden",!user?.is_admin);
+  $("adminLine").classList.toggle("hidden",!user?.is_admin);
   $("authShell").classList.add("hidden");
   $("appShell").classList.remove("hidden");
   showPage(page);
@@ -336,17 +471,27 @@ $("logoutBtn").onclick=async()=>{
   showAuth();
 };
 
+const POST_PAGES=["journal","task","important"];
 function showPage(p){
+  if(!["journal","habits","task","important","more"].includes(p))p="journal";
   page=p;
   root.dataset.page=p;
+  try{localStorage.setItem("page",p)}catch(e){}
   document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("on",b.dataset.page===p));
-  $("title").textContent=COPY[p].t;
-  $("sub").textContent=COPY[p].s;
-  $("note").placeholder=COPY[p].ph;
-  $("hint").textContent=COPY[p].hint;
-  $("hint").style.display=COPY[p].hint?"block":"none";
-  $("editCategory").value=p;
-  loadFeed();
+  const posts=POST_PAGES.includes(p);
+  $("postsView").classList.toggle("hidden",!posts);
+  $("habitsView").classList.toggle("hidden",p!=="habits");
+  $("moreView").classList.toggle("hidden",p!=="more");
+  window.scrollTo(0,0);
+  if(posts){
+    $("title").textContent=COPY[p].t;
+    $("sub").textContent=COPY[p].s;
+    $("note").placeholder=COPY[p].ph;
+    $("hint").textContent=COPY[p].hint;
+    $("hint").style.display=COPY[p].hint?"block":"none";
+    $("editCategory").value=p;
+    loadFeed();
+  }else if(p==="habits"){loadHabits()}
 }
 document.querySelectorAll("#nav button").forEach(b=>b.onclick=()=>showPage(b.dataset.page));
 
@@ -429,6 +574,219 @@ $("post").onclick=async()=>{
     $("note").value="";file=null;$("preview").style.display="none";$("msg").textContent="Checked in.";await loadFeed();
   }catch(e){$("msg").textContent=e.message||"Check-in failed. Try again."}finally{$("post").disabled=false}
 };
+
+/* ---- Habits: daily commits and streaks ---- */
+const H={data:null,sel:null,filter:"all",cap:null,tzTried:false,editId:null,pickIcon:"",pickColor:"",pickDays:"",commitId:null};
+const HICONS=["💪","🏋️","📚","🧘","💧","🏃","🛌","🥗","✍️","💻","🎯","🚭","🙏","🎸","🧹","💊"];
+const HCOLORS=["#3fb950","#e5c33a","#58a6ff","#b08cf6","#f08a4b","#f778ba","#ff7b72","#39d0c0"];
+const WD=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+const CHECK='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>';
+const NOTE_SVG='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M12 12v6M9 15h6"/></svg>';
+const pd=s=>{const[y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d)};
+const addDays=(d,n)=>new Date(d.getFullYear(),d.getMonth(),d.getDate()+n);
+const iso=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+const wdIdx=d=>(d.getDay()+6)%7;
+function ord(n){const v=n%100;if(v>=11&&v<=13)return n+"th";return n+({1:"st",2:"nd",3:"rd"}[n%10]||"th")}
+function dayLabel(s,short){const d=pd(s);const base=ord(d.getDate())+" "+d.toLocaleDateString(undefined,{month:"short"});const wk=(!short&&s===H.data.today)?"Today":d.toLocaleDateString(undefined,{weekday:"short"});return wk+", "+base}
+const hSay=t=>{$("hMsg").textContent=t||""};
+const hById=id=>H.data&&H.data.habits.find(h=>h.id===id);
+const isDueOn=(h,day)=>h.days[wdIdx(pd(day))]==="1";
+const jsonOpts=(method,obj)=>({method,headers:{"Content-Type":"application/json"},body:JSON.stringify(obj)});
+async function hApi(url,opts){
+  const r=await apiFetch(url,opts);
+  const body=await r.json().catch(()=>({}));
+  if(!r.ok){const d=body.detail;throw new Error(typeof d==="string"?d:"Please check what you entered.")}
+  return body;
+}
+function habitsReset(){H.data=null;H.sel=null;H.cap=null;H.tzTried=false;const l=$("habitList");if(l)l.innerHTML='<div class="empty">Loading...</div>'}
+
+async function loadHabits(){
+  try{
+    const d=await hApi("/habits");
+    const tz=Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if(tz&&tz!==d.timezone&&!H.tzTried){
+      H.tzTried=true;
+      try{await hApi("/todos/settings",jsonOpts("PUT",{timezone:tz}));return loadHabits()}catch(e){}
+    }
+    d.habits.forEach(h=>{h._m=new Map(h.logs.map(l=>[l.day,l.note]))});
+    H.data=d;
+    if(!H.sel||H.sel>d.today)H.sel=d.today;
+    renderHabits();
+  }catch(e){
+    if(!$("authShell").classList.contains("hidden"))return;
+    if(!H.data)$("habitList").innerHTML='<div class="empty">Couldn\'t load habits. Refresh to try again.</div>';
+    else hSay(e.message);
+  }
+}
+
+function ringSvg(f){
+  const C=2*Math.PI*19;
+  return `<svg viewBox="0 0 44 44" aria-hidden="true"><circle class="trk" cx="22" cy="22" r="19" fill="none" stroke-width="3"/><circle cx="22" cy="22" r="19" fill="none" stroke="var(--ac)" stroke-width="3" stroke-linecap="round" stroke-dasharray="${(f*C).toFixed(1)} ${C.toFixed(1)}"/></svg>`;
+}
+function gridHtml(h,weeks){
+  const today=pd(H.data.today);
+  const startMon=addDays(addDays(today,-wdIdx(today)),-7*(weeks-1));
+  let out="";
+  for(let w=0;w<weeks;w++)for(let r=0;r<7;r++){
+    const dt=addDays(startMon,w*7+r),key=iso(dt);
+    if(dt>today){out+='<i class="c f"></i>';continue}
+    out+=`<i class="c${h._m.has(key)?" on":""}${h.days[r]==="1"?"":" off"}${key===H.sel?" sel":""}" data-d="${key}"></i>`;
+  }
+  return `<div class="h-grid" style="grid-template-columns:repeat(${weeks},1fr)">${out}</div>`;
+}
+function capText(h){
+  if(!H.cap||H.cap.id!==h.id)return"";
+  const day=H.cap.day;
+  if(!h._m.has(day))return dayLabel(day,true)+": no commit";
+  const n=h._m.get(day);
+  return dayLabel(day,true)+": committed"+(n?" · "+n:"");
+}
+function renderHabits(){
+  const d=H.data;if(!d)return;
+  $("hTitle").innerHTML=esc(dayLabel(H.sel));
+  const strip=$("hStrip"),keep=strip.scrollLeft,first=!strip.children.length;
+  strip.innerHTML=d.week.map(w=>{
+    const dt=pd(w.date),f=w.due?Math.min(1,w.done/w.due):0;
+    return `<button type="button" class="dy" data-d="${w.date}" aria-pressed="${w.date===H.sel}" aria-label="${esc(dayLabel(w.date))}"><span class="dl">${dt.toLocaleDateString(undefined,{weekday:"short"})}</span><span class="ring">${ringSvg(f)}<b>${dt.getDate()}</b></span></button>`;
+  }).join("");
+  strip.scrollLeft=first?strip.scrollWidth:keep;
+
+  const dueLeft=d.habits.filter(h=>isDueOn(h,H.sel)&&!h._m.has(H.sel)).length;
+  $("fAll").textContent=`All (${d.habits.length})`;
+  $("fDue").textContent=`Due (${dueLeft})`;
+  $("fAll").setAttribute("aria-pressed",H.filter==="all");
+  $("fDue").setAttribute("aria-pressed",H.filter==="due");
+  $("hScore").textContent=d.score.toFixed(1)+"%";
+
+  const list=d.habits.filter(h=>H.filter==="all"||(isDueOn(h,H.sel)&&!h._m.has(H.sel)));
+  if(!d.habits.length){
+    $("habitList").innerHTML='<div class="empty">No habits yet.<br>Add one, then commit it every day to build a streak.</div>';return;
+  }
+  if(!list.length){$("habitList").innerHTML='<div class="empty">Nothing due. Nice work.</div>';return}
+  const inner=Math.max(200,$("habitList").clientWidth-34);
+  const weeks=Math.max(12,Math.min(53,Math.floor((inner+3)/15)));
+  $("habitList").innerHTML=list.map(h=>{
+    const done=h._m.has(H.sel),due=isDueOn(h,H.sel);
+    const streak=h.streak===1?"1 day":h.streak+" days";
+    const extra=` · ${h.commits} commit${h.commits===1?"":"s"}`+(h.best_streak>h.streak?` · best ${h.best_streak}`:"")+(due?"":" · rest day");
+    return `<article class="habit" data-id="${h.id}" style="--hc:${esc(h.color)}">
+      <div class="h-head">
+        <button class="h-icon" type="button" data-act="edit" aria-label="Edit ${esc(h.name)}">${esc(h.icon)}</button>
+        <div class="h-info"><div class="h-name">${esc(h.name)}</div><div class="h-streak">Streak: ${streak}${extra}</div></div>
+        <button class="h-btn" type="button" data-act="note" aria-label="Commit with a message">${NOTE_SVG}</button>
+        <button class="h-btn${done?" on":""}" type="button" data-act="toggle" aria-pressed="${done}" aria-label="${done?"Undo commit":"Commit"} for ${esc(dayLabel(H.sel))}">${CHECK}</button>
+      </div>
+      ${gridHtml(h,weeks)}
+      <div class="h-cap">${esc(capText(h))}</div>
+    </article>`;
+  }).join("");
+}
+
+$("hStrip").onclick=e=>{const b=e.target.closest(".dy");if(!b)return;H.sel=b.dataset.d;H.cap=null;hSay("");renderHabits()};
+$("fAll").onclick=()=>{H.filter="all";renderHabits()};
+$("fDue").onclick=()=>{H.filter="due";renderHabits()};
+$("habitList").onclick=e=>{
+  const card=e.target.closest(".habit");if(!card)return;
+  const id=parseInt(card.dataset.id,10),h=hById(id);if(!h)return;
+  const cell=e.target.closest(".c[data-d]");
+  if(cell){
+    H.cap={id,day:cell.dataset.d};
+    if(H.data.week.some(w=>w.date===cell.dataset.d))H.sel=cell.dataset.d;
+    renderHabits();return;
+  }
+  const act=e.target.closest("[data-act]");if(!act)return;
+  if(act.dataset.act==="toggle")toggleHabit(id);
+  else if(act.dataset.act==="note")openCommit(id);
+  else if(act.dataset.act==="edit")openHabitModal(id);
+};
+let hTimer;window.addEventListener("resize",()=>{clearTimeout(hTimer);hTimer=setTimeout(()=>{if(page==="habits")renderHabits()},150)});
+
+async function sendCommit(h,done,note){
+  const day=H.sel;
+  if(done)h._m.set(day,note??h._m.get(day)??"");else h._m.delete(day);
+  h.logs=[...h._m].map(([dd,n])=>({day:dd,note:n}));
+  renderHabits();
+  try{
+    await hApi(`/habits/${h.id}/logs/${day}`,jsonOpts("PUT",done?{done:true,note:note??null}:{done:false}));
+    hSay("");
+  }catch(e){hSay(e.message)}
+  await loadHabits();   // refresh streaks, score and the week rings from the server
+}
+function toggleHabit(id){const h=hById(id);if(h)return sendCommit(h,!h._m.has(H.sel))}
+
+/* commit-with-message dialog */
+function openCommit(id){
+  const h=hById(id);if(!h)return;
+  H.commitId=id;
+  $("cmTitle").textContent=h.name;
+  $("cmSub").textContent="Commit for "+dayLabel(H.sel);
+  $("cmNote").value=h._m.get(H.sel)||"";
+  $("cmSave").textContent=h._m.has(H.sel)?"Update":"Commit";
+  $("cmMsg").textContent="";
+  $("commitModal").classList.add("active");
+  $("cmNote").focus();
+}
+function closeCommit(){$("commitModal").classList.remove("active");H.commitId=null}
+$("cmCancel").onclick=closeCommit;
+$("cmSave").onclick=async()=>{
+  const h=hById(H.commitId);if(!h)return closeCommit();
+  const note=$("cmNote").value.trim();
+  $("cmSave").disabled=true;
+  try{
+    await hApi(`/habits/${h.id}/logs/${H.sel}`,jsonOpts("PUT",{done:true,note}));
+    closeCommit();await loadHabits();
+  }catch(e){$("cmMsg").textContent=e.message}finally{$("cmSave").disabled=false}
+};
+
+/* add / edit habit dialog */
+function drawPickers(){
+  $("hmIcons").innerHTML=HICONS.map(i=>`<button type="button" class="pk" data-v="${i}" aria-pressed="${i===H.pickIcon}">${i}</button>`).join("");
+  $("hmColors").innerHTML=HCOLORS.map(c=>`<button type="button" class="pk sw" style="--sw:${c}" data-v="${c}" aria-label="${c}" aria-pressed="${c===H.pickColor}"></button>`).join("");
+  $("hmDays").innerHTML=WD.map((w,i)=>`<button type="button" class="dc" data-i="${i}" aria-pressed="${H.pickDays[i]==="1"}">${w[0]}</button>`).join("");
+}
+$("hmIcons").onclick=e=>{const b=e.target.closest(".pk");if(b){H.pickIcon=b.dataset.v;drawPickers()}};
+$("hmColors").onclick=e=>{const b=e.target.closest(".pk");if(b){H.pickColor=b.dataset.v;drawPickers()}};
+$("hmDays").onclick=e=>{const b=e.target.closest(".dc");if(!b)return;const i=+b.dataset.i,a=H.pickDays.split("");a[i]=a[i]==="1"?"0":"1";H.pickDays=a.join("");drawPickers()};
+function openHabitModal(id){
+  const h=id?hById(id):null;
+  H.editId=h?h.id:null;
+  H.pickIcon=h?h.icon:HICONS[0];
+  H.pickColor=h?h.color:HCOLORS[Math.floor(Math.random()*HCOLORS.length)];
+  H.pickDays=h?h.days:"1111111";
+  $("hmTitle").textContent=h?"Edit habit":"New habit";
+  $("hmName").value=h?h.name:"";
+  $("hmDelete").classList.toggle("hidden",!h);
+  $("hmMsg").textContent="";
+  drawPickers();
+  $("habitModal").classList.add("active");
+  $("hmName").focus();
+}
+function closeHabitModal(){$("habitModal").classList.remove("active");H.editId=null}
+$("hAdd").onclick=()=>openHabitModal(null);
+$("hmCancel").onclick=closeHabitModal;
+$("hmSave").onclick=async()=>{
+  const name=$("hmName").value.trim();
+  if(!name){$("hmMsg").textContent="Give the habit a name.";return}
+  if(!H.pickDays.includes("1")){$("hmMsg").textContent="Pick at least one day.";return}
+  const body={name,icon:H.pickIcon,color:H.pickColor,days:H.pickDays};
+  $("hmSave").disabled=true;
+  try{
+    await hApi(H.editId?`/habits/${H.editId}`:"/habits",jsonOpts(H.editId?"PATCH":"POST",body));
+    closeHabitModal();await loadHabits();
+  }catch(e){$("hmMsg").textContent=e.message}finally{$("hmSave").disabled=false}
+};
+$("hmDelete").onclick=async()=>{
+  const h=hById(H.editId);if(!h)return;
+  if(!confirm(`Delete "${h.name}" and all its commits? This cannot be undone.`))return;
+  try{await hApi(`/habits/${h.id}`,{method:"DELETE"});closeHabitModal();await loadHabits()}
+  catch(e){$("hmMsg").textContent=e.message}
+};
+document.addEventListener("keydown",e=>{
+  if(e.key!=="Escape")return;
+  if($("habitModal").classList.contains("active"))closeHabitModal();
+  if($("commitModal").classList.contains("active"))closeCommit();
+});
+$("hmName").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();$("hmSave").click()}});
 
 async function init(){
   try{const c=await (await fetch("/auth/config")).json();$("registerTab").classList.toggle("hidden",!c.registration_open)}catch(e){}

@@ -113,6 +113,35 @@ def init_db():
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_tasks_user_day ON tasks (user_id, day)")
         cursor.execute(
             '''
+            CREATE TABLE IF NOT EXISTS habits (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                name TEXT NOT NULL,
+                icon TEXT NOT NULL DEFAULT '✅',
+                color TEXT NOT NULL DEFAULT '#3fb950',
+                days TEXT NOT NULL DEFAULT '1111111',
+                created_day TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            )
+            '''
+        )
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_habits_user ON habits (user_id)")
+        cursor.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS habit_logs (
+                id SERIAL PRIMARY KEY,
+                habit_id INTEGER NOT NULL REFERENCES habits(id) ON DELETE CASCADE,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                day TEXT NOT NULL,
+                note TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL,
+                UNIQUE (habit_id, day)
+            )
+            '''
+        )
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_habit_logs_user_day ON habit_logs (user_id, day)")
+        cursor.execute(
+            '''
             CREATE TABLE IF NOT EXISTS settings (
                 key TEXT PRIMARY KEY,
                 value TEXT NOT NULL,
@@ -550,3 +579,97 @@ def claim_todo_reminder(user_id, now_iso, cutoff_iso):
 def release_todo_reminder(user_id, previous):
     with _cursor() as cursor:
         cursor.execute("UPDATE users SET last_todo_reminder_at = %s WHERE id = %s", (previous, user_id))
+
+
+# ---- habits (daily streaks) -------------------------------------------------
+
+_HABIT_COLUMNS = "id, name, icon, color, days, created_day, created_at"
+
+
+def add_habit(user_id, name, icon, color, days, created_day):
+    with _cursor(dict_rows=True) as cursor:
+        cursor.execute(
+            f"INSERT INTO habits (user_id, name, icon, color, days, created_day, created_at) "
+            f"VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING {_HABIT_COLUMNS}",
+            (user_id, name, icon, color, days, created_day, _now()),
+        )
+        return dict(cursor.fetchone())
+
+
+def get_habit(habit_id, user_id):
+    with _cursor(dict_rows=True) as cursor:
+        cursor.execute(
+            f"SELECT {_HABIT_COLUMNS} FROM habits WHERE id = %s AND user_id = %s", (habit_id, user_id)
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
+def list_habits(user_id):
+    with _cursor(dict_rows=True) as cursor:
+        cursor.execute(f"SELECT {_HABIT_COLUMNS} FROM habits WHERE user_id = %s ORDER BY id", (user_id,))
+        return [dict(r) for r in cursor.fetchall()]
+
+
+def count_habits(user_id):
+    with _cursor() as cursor:
+        cursor.execute("SELECT COUNT(*) FROM habits WHERE user_id = %s", (user_id,))
+        return cursor.fetchone()[0]
+
+
+def update_habit(habit_id, user_id, name=None, icon=None, color=None, days=None):
+    """Change any of the given fields. Returns the updated habit, or None if it isn't theirs."""
+    sets, params = [], []
+    for column, value in (("name", name), ("icon", icon), ("color", color), ("days", days)):
+        if value is not None:
+            sets.append(f"{column} = %s")
+            params.append(value)
+    if not sets:
+        return get_habit(habit_id, user_id)
+    with _cursor(dict_rows=True) as cursor:
+        cursor.execute(
+            f"UPDATE habits SET {', '.join(sets)} WHERE id = %s AND user_id = %s RETURNING {_HABIT_COLUMNS}",
+            (*params, habit_id, user_id),
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
+def delete_habit(habit_id, user_id):
+    """Deletes the habit; its commits go with it (ON DELETE CASCADE)."""
+    with _cursor() as cursor:
+        cursor.execute("DELETE FROM habits WHERE id = %s AND user_id = %s", (habit_id, user_id))
+        return cursor.rowcount > 0
+
+
+def set_habit_log(habit_id, user_id, day, note=None):
+    """Commit a habit for a day. note=None keeps any existing message; a string replaces it."""
+    with _cursor(dict_rows=True) as cursor:
+        cursor.execute(
+            '''
+            INSERT INTO habit_logs (habit_id, user_id, day, note, created_at) VALUES (%s, %s, %s, %s, %s)
+            ON CONFLICT (habit_id, day) DO UPDATE
+                SET note = CASE WHEN %s THEN EXCLUDED.note ELSE habit_logs.note END
+            RETURNING day, note
+            ''',
+            (habit_id, user_id, day, note or "", _now(), note is not None),
+        )
+        return dict(cursor.fetchone())
+
+
+def delete_habit_log(habit_id, user_id, day):
+    with _cursor() as cursor:
+        cursor.execute(
+            "DELETE FROM habit_logs WHERE habit_id = %s AND user_id = %s AND day = %s",
+            (habit_id, user_id, day),
+        )
+        return cursor.rowcount > 0
+
+
+def list_habit_logs(user_id):
+    """Every commit the user has made (a few small rows per habit per day)."""
+    with _cursor(dict_rows=True) as cursor:
+        cursor.execute(
+            "SELECT habit_id, day, note FROM habit_logs WHERE user_id = %s ORDER BY day", (user_id,)
+        )
+        return [dict(r) for r in cursor.fetchall()]
