@@ -4,10 +4,6 @@ A self-hosted accountability journal. You check in regularly with posts, optiona
 
 <!-- Add screenshots: Journal page, Important page, dark and light mode. -->
 
-## Why I built it
-
-I wanted one private place to write down what's happening and keep things worth remembering, running on my own setup. Then I added the "switch" part: if I stop checking in, something should notice.
-
 ## What it does
 
 The app has a menu bar (bottom bar on phones, sidebar on desktop) with **Journal, Habits, Tasks / Goals, Important and More**. Account, alerts, theme, the To-do link and Admin live under **More**, so the journal page stays clean. Posts live on three pages:
