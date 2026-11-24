@@ -4,14 +4,19 @@ import os
 import threading
 from datetime import datetime, timedelta, timezone
 
+import emailer
+import planner_logic
 import todo_logic
 from database import (
     claim_alert,
+    claim_event_reminder,
     claim_todo_reminder,
     get_users_for_deadline_check,
     get_users_with_open_tasks,
+    list_due_event_reminders,
     list_tasks,
     release_alert,
+    release_event_reminder,
     release_todo_reminder,
     set_setting,
 )
@@ -100,6 +105,44 @@ def run_todo_reminders(now):
     return sent, errors
 
 
+def run_event_reminders(now):
+    """Email a reminder for every calendar event starting within the next hour. Returns (sent, errors).
+
+    claim_event_reminder() marks an event as sent before the email goes out, so overlapping
+    ticks can't send it twice; a failed send releases the claim and the next tick retries
+    until the event starts.
+    """
+    if not emailer.is_configured():
+        return 0, 0  # the admin page shows that email isn't set up
+    sent = errors = 0
+    now = now.replace(microsecond=0)
+    until = now + timedelta(minutes=planner_logic.REMINDER_LEAD_MINUTES)
+    try:
+        due = list_due_event_reminders(now.isoformat(), until.isoformat())
+    except Exception:
+        logger.exception("Could not load events due for a reminder")
+        return 0, 1
+    for event in due:
+        claimed = False
+        try:
+            claimed = claim_event_reminder(event["id"], now.isoformat())
+            if not claimed:
+                continue
+            subject, body = planner_logic.reminder_email(event, now)
+            emailer.send_email(event["email"], subject, body)
+            sent += 1
+        except Exception as exc:
+            # The address is deliberately not logged.
+            logger.warning("Event reminder %s failed: %s", event.get("id"), exc)
+            errors += 1
+            if claimed:
+                try:
+                    release_event_reminder(event["id"])
+                except Exception:
+                    logger.exception("Could not release reminder claim for event %s", event.get("id"))
+    return sent, errors
+
+
 def run_tick(source="scheduler"):
     """Check every user's deadline and push an alert to those who are overdue.
 
@@ -120,6 +163,7 @@ def run_tick(source="scheduler"):
             "alerted": 0,
             "no_device": 0,
             "reminded": 0,
+            "emailed": 0,
             "errors": 0,
         }
 
@@ -154,6 +198,9 @@ def run_tick(source="scheduler"):
 
         result["reminded"], todo_errors = run_todo_reminders(now)
         result["errors"] += todo_errors
+
+        result["emailed"], event_errors = run_event_reminders(now)
+        result["errors"] += event_errors
 
         try:
             set_setting("last_tick", json.dumps(result))
