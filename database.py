@@ -49,6 +49,7 @@ def init_db():
         # Older databases still have a (now unused) ntfy_topic column; it is left alone.
         cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE")
         cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_alert_at TEXT")
+        cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT")
         cursor.execute(
             '''
             CREATE TABLE IF NOT EXISTS checkins (
@@ -142,6 +143,24 @@ def init_db():
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_habit_logs_user_day ON habit_logs (user_id, day)")
         cursor.execute(
             '''
+            CREATE TABLE IF NOT EXISTS events (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                title TEXT NOT NULL,
+                notes TEXT NOT NULL DEFAULT '',
+                color TEXT NOT NULL DEFAULT '#2d8cff',
+                starts_at TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                reminded_at TEXT
+            )
+            '''
+        )
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_events_user_start ON events (user_id, starts_at)")
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_events_pending ON events (starts_at) WHERE reminded_at IS NULL"
+        )
+        cursor.execute(
+            '''
             CREATE TABLE IF NOT EXISTS settings (
                 key TEXT PRIMARY KEY,
                 value TEXT NOT NULL,
@@ -175,11 +194,11 @@ def set_setting(key, value):
 # ---- users ------------------------------------------------------------------
 
 
-def create_user(username, password_hash, is_admin=False):
+def create_user(username, password_hash, is_admin=False, email=None):
     with _cursor(dict_rows=True) as cursor:
         cursor.execute(
-            "INSERT INTO users (username, password_hash, is_admin, created_at) VALUES (%s, %s, %s, %s) RETURNING id, username, is_admin, created_at",
-            (username, password_hash, is_admin, _now()),
+            "INSERT INTO users (username, password_hash, is_admin, created_at, email) VALUES (%s, %s, %s, %s, %s) RETURNING id, username, is_admin, created_at, email",
+            (username, password_hash, is_admin, _now(), email),
         )
         return cursor.fetchone()
 
@@ -187,7 +206,7 @@ def create_user(username, password_hash, is_admin=False):
 def get_user_by_username(username):
     with _cursor(dict_rows=True) as cursor:
         cursor.execute(
-            "SELECT id, username, password_hash, is_admin, created_at FROM users WHERE username = %s",
+            "SELECT id, username, password_hash, is_admin, created_at, email FROM users WHERE username = %s",
             (username,),
         )
         return cursor.fetchone()
@@ -196,7 +215,7 @@ def get_user_by_username(username):
 def get_user_by_id(user_id):
     with _cursor(dict_rows=True) as cursor:
         cursor.execute(
-            "SELECT id, username, is_admin, created_at FROM users WHERE id = %s",
+            "SELECT id, username, is_admin, created_at, email FROM users WHERE id = %s",
             (user_id,),
         )
         return cursor.fetchone()
@@ -205,6 +224,12 @@ def get_user_by_id(user_id):
 def set_user_admin(user_id, is_admin):
     with _cursor() as cursor:
         cursor.execute("UPDATE users SET is_admin = %s WHERE id = %s", (is_admin, user_id))
+
+
+def set_user_email(user_id, email):
+    """Store the account's email (None clears it). It is only used for calendar reminders."""
+    with _cursor() as cursor:
+        cursor.execute("UPDATE users SET email = %s WHERE id = %s", (email, user_id))
 
 
 def has_users():
@@ -322,6 +347,24 @@ def delete_checkin(checkin_id, user_id):
     if not row:
         return None, False
     return row[0], True
+
+
+def get_last_checkin_time(user_id):
+    """Timestamp of the newest entry of any kind (posts and check-ins both reset the deadline)."""
+    with _cursor() as cursor:
+        cursor.execute("SELECT MAX(timestamp) FROM checkins WHERE user_id = %s", (user_id,))
+        row = cursor.fetchone()
+        return row[0] if row else None
+
+
+def list_pulses(user_id, since_iso, limit=500):
+    """Timestamps of the user's hold-to-confirm check-ins since a moment, newest first."""
+    with _cursor() as cursor:
+        cursor.execute(
+            "SELECT timestamp FROM checkins WHERE user_id = %s AND category = 'pulse' AND timestamp >= %s ORDER BY timestamp DESC LIMIT %s",
+            (user_id, since_iso, limit),
+        )
+        return [row[0] for row in cursor.fetchall()]
 
 
 # ---- deadline / alerts ------------------------------------------------------
@@ -673,3 +716,105 @@ def list_habit_logs(user_id):
             "SELECT habit_id, day, note FROM habit_logs WHERE user_id = %s ORDER BY day", (user_id,)
         )
         return [dict(r) for r in cursor.fetchall()]
+
+
+# ---- calendar events --------------------------------------------------------
+
+_EVENT_COLUMNS = "id, title, notes, color, starts_at, created_at, reminded_at"
+
+
+def add_event(user_id, title, notes, color, starts_at):
+    with _cursor(dict_rows=True) as cursor:
+        cursor.execute(
+            f"INSERT INTO events (user_id, title, notes, color, starts_at, created_at) "
+            f"VALUES (%s, %s, %s, %s, %s, %s) RETURNING {_EVENT_COLUMNS}",
+            (user_id, title, notes, color, starts_at, _now()),
+        )
+        return dict(cursor.fetchone())
+
+
+def get_event(event_id, user_id):
+    with _cursor(dict_rows=True) as cursor:
+        cursor.execute(
+            f"SELECT {_EVENT_COLUMNS} FROM events WHERE id = %s AND user_id = %s", (event_id, user_id)
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
+def list_events(user_id, start_iso, end_iso):
+    """Events starting in [start_iso, end_iso). Times are normalised UTC ISO strings."""
+    with _cursor(dict_rows=True) as cursor:
+        cursor.execute(
+            f"SELECT {_EVENT_COLUMNS} FROM events WHERE user_id = %s AND starts_at >= %s AND starts_at < %s "
+            f"ORDER BY starts_at, id",
+            (user_id, start_iso, end_iso),
+        )
+        return [dict(r) for r in cursor.fetchall()]
+
+
+def count_events(user_id):
+    with _cursor() as cursor:
+        cursor.execute("SELECT COUNT(*) FROM events WHERE user_id = %s", (user_id,))
+        return cursor.fetchone()[0]
+
+
+def update_event(event_id, user_id, title=None, notes=None, color=None, starts_at=None):
+    """Change any of the given fields. A new start time re-arms the reminder.
+
+    Returns the updated event, or None if it isn't theirs.
+    """
+    sets, params = [], []
+    for column, value in (("title", title), ("notes", notes), ("color", color), ("starts_at", starts_at)):
+        if value is not None:
+            sets.append(f"{column} = %s")
+            params.append(value)
+    if starts_at is not None:
+        sets.append("reminded_at = NULL")
+    if not sets:
+        return get_event(event_id, user_id)
+    with _cursor(dict_rows=True) as cursor:
+        cursor.execute(
+            f"UPDATE events SET {', '.join(sets)} WHERE id = %s AND user_id = %s RETURNING {_EVENT_COLUMNS}",
+            (*params, event_id, user_id),
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+
+def delete_event(event_id, user_id):
+    with _cursor() as cursor:
+        cursor.execute("DELETE FROM events WHERE id = %s AND user_id = %s", (event_id, user_id))
+        return cursor.rowcount > 0
+
+
+def list_due_event_reminders(now_iso, until_iso, limit=50):
+    """Upcoming events whose reminder window has opened and that haven't been emailed yet."""
+    with _cursor(dict_rows=True) as cursor:
+        cursor.execute(
+            '''
+            SELECT e.id, e.title, e.notes, e.starts_at, u.email, u.username, u.timezone
+            FROM events e JOIN users u ON u.id = e.user_id
+            WHERE e.reminded_at IS NULL AND e.starts_at > %s AND e.starts_at <= %s
+              AND u.email IS NOT NULL AND u.email <> ''
+            ORDER BY e.starts_at
+            LIMIT %s
+            ''',
+            (now_iso, until_iso, limit),
+        )
+        return [dict(r) for r in cursor.fetchall()]
+
+
+def claim_event_reminder(event_id, now_iso):
+    """Atomically mark an event as emailed. Only one caller can win, so overlapping ticks never double-send."""
+    with _cursor() as cursor:
+        cursor.execute(
+            "UPDATE events SET reminded_at = %s WHERE id = %s AND reminded_at IS NULL", (now_iso, event_id)
+        )
+        return cursor.rowcount == 1
+
+
+def release_event_reminder(event_id):
+    """Undo claim_event_reminder after a failed send, so the next tick retries."""
+    with _cursor() as cursor:
+        cursor.execute("UPDATE events SET reminded_at = NULL WHERE id = %s", (event_id,))

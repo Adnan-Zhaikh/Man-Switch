@@ -1,6 +1,7 @@
 import hashlib
 import hmac
 import os
+import re
 import secrets
 
 from fastapi import HTTPException, Request, status
@@ -16,6 +17,10 @@ USERNAME_MIN_LEN = 3
 USERNAME_MAX_LEN = 32
 PASSWORD_MIN_LEN = 8
 PASSWORD_MAX_LEN = 128
+EMAIL_MAX_LEN = 254
+_EMAIL_RE = re.compile(
+    r'^[^@\s,;<>()\[\]\\"]{1,64}@[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)+$'
+)
 
 
 def hash_password(password: str) -> str:
@@ -89,6 +94,16 @@ def validate_password(password: str) -> str:
             detail=f"Password must be between {PASSWORD_MIN_LEN} and {PASSWORD_MAX_LEN} characters",
         )
     return password
+
+
+def validate_email(email):
+    """Return a cleaned, lower-cased address, or None when the field was left empty (it's optional)."""
+    cleaned = (email or "").strip().lower()
+    if not cleaned:
+        return None
+    if len(cleaned) > EMAIL_MAX_LEN or not _EMAIL_RE.match(cleaned):
+        raise HTTPException(status_code=422, detail="Enter a valid email address")
+    return cleaned
 
 
 def get_required_session_secret() -> str:
