@@ -3,7 +3,9 @@ import json
 import logging
 import os
 from contextlib import asynccontextmanager
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import Literal, Optional
 
 import psycopg2.errors
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -21,6 +23,7 @@ from auth import (
     hash_password,
     require_authenticated_user_id,
     start_user_session,
+    validate_email,
     validate_password,
     validate_username,
     verify_password,
@@ -36,6 +39,7 @@ from database import (
     delete_push_subscription,
     get_all_checkins,
     get_checkin_by_id,
+    get_last_checkin_time,
     get_push_subscriptions,
     get_setting,
     get_unowned_checkin_count,
@@ -43,8 +47,10 @@ from database import (
     get_user_by_username,
     has_users,
     init_db,
+    list_pulses,
     set_setting,
     set_user_admin,
+    set_user_email,
     update_checkin,
     upsert_push_subscription,
 )
@@ -52,7 +58,9 @@ from push import is_configured as push_is_configured
 from push import public_key as push_public_key
 from push import send_to_user, validate_subscription
 from ratelimit import RateLimiter
+import emailer
 import habits
+import planner
 import todos
 from scheduler import ALERT_REPEAT_MINUTES, DEADLINE_HOURS, is_deadline_exceeded, run_tick
 from storage import delete_image, get_signed_url, upload_image
@@ -103,6 +111,8 @@ app.add_middleware(
 
 
 ALLOWED_CATEGORIES = {"journal", "important", "task"}
+PULSE_CATEGORY = "pulse"  # hold-to-confirm check-ins; never created through /checkin
+PULSE_LOOKBACK_DAYS = 60
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
 MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5 MB
 MAX_NOTE_LENGTH = 2000
@@ -122,6 +132,7 @@ write_limiter = RateLimiter(60, 60)           # create/edit/delete entries, per 
 push_sub_limiter = RateLimiter(20, 3600)      # subscribing devices, per user
 push_test_limiter = RateLimiter(5, 600)       # test notifications, per user
 cron_fail_limiter = RateLimiter(10, 300)      # wrong cron keys, per IP
+email_change_limiter = RateLimiter(10, 3600)  # changing the account email, per user
 
 
 def client_ip(request: Request) -> str:
@@ -278,11 +289,13 @@ def register(
     username: str = Form(...),
     password: str = Form(...),
     confirm_password: str = Form(...),
+    email: str = Form(""),
 ):
     enforce(register_limiter, client_ip(request))
 
     normalized_username = validate_username(username)
     validated_password = validate_password(password)
+    validated_email = validate_email(email)  # optional: empty means none
 
     if validated_password != confirm_password:
         raise HTTPException(status_code=422, detail="Passwords do not match")
@@ -295,7 +308,7 @@ def register(
 
     is_first_user = not has_users()
     try:
-        user = create_user(normalized_username, hash_password(validated_password))
+        user = create_user(normalized_username, hash_password(validated_password), email=validated_email)
     except psycopg2.errors.UniqueViolation:
         # Lost a race with a concurrent registration of the same name.
         raise HTTPException(status_code=409, detail="Username already exists")
@@ -306,7 +319,12 @@ def register(
     start_user_session(request, user["id"])
     return {
         "status": "registered",
-        "user": {"id": user["id"], "username": user["username"], "is_admin": bool(user.get("is_admin"))},
+        "user": {
+            "id": user["id"],
+            "username": user["username"],
+            "is_admin": bool(user.get("is_admin")),
+            "email": user.get("email"),
+        },
     }
 
 
@@ -336,7 +354,12 @@ def login(request: Request, username: str = Form(...), password: str = Form(...)
     start_user_session(request, user["id"])
     return {
         "status": "logged_in",
-        "user": {"id": user["id"], "username": user["username"], "is_admin": bool(user.get("is_admin"))},
+        "user": {
+            "id": user["id"],
+            "username": user["username"],
+            "is_admin": bool(user.get("is_admin")),
+            "email": user.get("email"),
+        },
     }
 
 
@@ -349,6 +372,19 @@ def logout(request: Request):
 @app.get("/auth/me")
 def me(user=Depends(get_current_user)):
     return {"authenticated": True, "user": user}
+
+
+class EmailIn(BaseModel):
+    email: Optional[str] = Field(None, max_length=254)
+
+
+@app.put("/auth/email")
+def update_email(body: EmailIn, user=Depends(get_current_user)):
+    """Set, change or (with an empty value) remove the account email. The calendar needs one."""
+    enforce(email_change_limiter, f"user:{user['id']}")
+    cleaned = validate_email(body.email)
+    set_user_email(user["id"], cleaned)
+    return {"email": cleaned}
 
 
 # ---------------------------------------------------------------------------
@@ -519,11 +555,43 @@ def history(category: str = None, user=Depends(get_current_user)):
 
 
 # ---------------------------------------------------------------------------
-# To-do list
+# Check-in: press and hold, no typing. Resets the deadline like any post does.
+# ---------------------------------------------------------------------------
+
+
+class PulseIn(BaseModel):
+    mood: Optional[Literal["good", "okay", "rough"]] = None
+
+
+def _pulse_status(user_id):
+    since = (datetime.now(timezone.utc) - timedelta(days=PULSE_LOOKBACK_DAYS)).isoformat()
+    return {
+        "last_checkin": get_last_checkin_time(user_id),
+        "deadline_hours": DEADLINE_HOURS,
+        "pulses": list_pulses(user_id, since),
+    }
+
+
+@app.get("/pulse")
+def pulse_status(user=Depends(get_current_user)):
+    return _pulse_status(user["id"])
+
+
+@app.post("/pulse")
+def pulse(body: PulseIn, user=Depends(get_current_user)):
+    enforce(write_limiter, f"user:{user['id']}")
+    note = "Checked in" + (f" · feeling {body.mood}" if body.mood else "")
+    add_checkin(user["id"], note, PULSE_CATEGORY)
+    return {"status": "checked in", **_pulse_status(user["id"])}
+
+
+# ---------------------------------------------------------------------------
+# To-do list and calendar
 # ---------------------------------------------------------------------------
 
 app.include_router(todos.build_router(get_current_user, enforce, write_limiter, client_ip, _too_many))
 app.include_router(habits.build_router(get_current_user, enforce, write_limiter))
+app.include_router(planner.build_router(get_current_user, enforce, write_limiter))
 
 
 @app.get("/todo")
@@ -634,7 +702,7 @@ async def tick(request: Request):
     if request.method == "HEAD":
         return Response(status_code=200)
     result = await run_in_threadpool(run_tick, "cron")
-    return {k: result.get(k) for k in ("overdue", "alerted", "no_device", "reminded", "errors", "skipped") if k in result} | {"ok": True}
+    return {k: result.get(k) for k in ("overdue", "alerted", "no_device", "reminded", "emailed", "errors", "skipped") if k in result} | {"ok": True}
 
 
 # ---------------------------------------------------------------------------
@@ -683,6 +751,7 @@ def admin_overview(request: Request, admin=Depends(get_admin_user)):
         "status": {
             "push_configured": push_is_configured(),
             "cron_configured": bool(os.getenv("CRON_SECRET")),
+            "email_provider": emailer.provider(),
             "registration_open": registration_open(),
             "deadline_hours": DEADLINE_HOURS,
             "repeat_minutes": ALERT_REPEAT_MINUTES,
