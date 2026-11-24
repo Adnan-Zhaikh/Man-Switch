@@ -13,6 +13,7 @@ import push  # noqa: E402
 import ratelimit  # noqa: E402
 import scheduler  # noqa: E402
 import habits  # noqa: E402
+import planner  # noqa: E402
 import todo_logic  # noqa: E402
 import todos  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
@@ -32,28 +33,32 @@ class FakeStore:
         self.users, self.checkins, self.subs, self.settings = {}, {}, [], {}
         self.tasks, self.next_task = {}, 1
         self.habits, self.next_habit, self.habit_logs = {}, 1, {}
+        self.events, self.next_event = {}, 1
         self.next_user, self.next_checkin = 1, 1
         self.uploads, self.deleted_images = [], []
 
     # users
-    def create_user(self, username, password_hash, is_admin=False):
+    def create_user(self, username, password_hash, is_admin=False, email=None):
         user = {"id": self.next_user, "username": username, "password_hash": password_hash,
                 "is_admin": is_admin, "created_at": now_iso(), "last_alert_at": None,
                 "timezone": "UTC", "todo_reminders": True, "quiet_start": 22, "quiet_end": 7,
-                "last_todo_reminder_at": None, "widget_token_hash": None}
+                "last_todo_reminder_at": None, "widget_token_hash": None, "email": email}
         self.users[user["id"]] = user
         self.next_user += 1
-        return {k: user[k] for k in ("id", "username", "is_admin", "created_at")}
+        return {k: user[k] for k in ("id", "username", "is_admin", "created_at", "email")}
 
     def get_user_by_username(self, username):
         return next((dict(u) for u in self.users.values() if u["username"] == username), None)
 
     def get_user_by_id(self, user_id):
         u = self.users.get(user_id)
-        return None if not u else {k: u[k] for k in ("id", "username", "is_admin", "created_at")}
+        return None if not u else {k: u[k] for k in ("id", "username", "is_admin", "created_at", "email")}
 
     def set_user_admin(self, user_id, is_admin):
         self.users[user_id]["is_admin"] = is_admin
+
+    def set_user_email(self, user_id, email):
+        self.users[user_id]["email"] = email
 
     def has_users(self):
         return bool(self.users)
@@ -83,6 +88,7 @@ class FakeStore:
         self.tasks = {k: t for k, t in self.tasks.items() if t["user_id"] != user_id}
         self.habits = {k: h for k, h in self.habits.items() if h["user_id"] != user_id}
         self.habit_logs = {k: v for k, v in self.habit_logs.items() if v["user_id"] != user_id}
+        self.events = {k: e for k, e in self.events.items() if e["user_id"] != user_id}
         del self.users[user_id]
         return True, paths
 
@@ -130,6 +136,14 @@ class FakeStore:
             return None, False
         del self.checkins[checkin_id]
         return c["image_url"], True
+
+    def get_last_checkin_time(self, user_id):
+        return max((c["timestamp"] for c in self.checkins.values() if c["user_id"] == user_id), default=None)
+
+    def list_pulses(self, user_id, since_iso, limit=500):
+        rows = [c["timestamp"] for c in self.checkins.values()
+                if c["user_id"] == user_id and c["category"] == "pulse" and c["timestamp"] >= since_iso]
+        return sorted(rows, reverse=True)[:limit]
 
     # deadline / alerts
     def get_users_for_deadline_check(self):
@@ -299,6 +313,70 @@ class FakeStore:
         rows = [v for v in self.habit_logs.values() if v["user_id"] == user_id]
         return sorted(({"habit_id": v["habit_id"], "day": v["day"], "note": v["note"]} for v in rows), key=lambda r: r["day"])
 
+    # calendar events
+    _EVENT_KEYS = ("id", "title", "notes", "color", "starts_at", "created_at", "reminded_at")
+
+    def _event(self, e):
+        return {k: e[k] for k in self._EVENT_KEYS}
+
+    def add_event(self, user_id, title, notes, color, starts_at):
+        e = {"id": self.next_event, "user_id": user_id, "title": title, "notes": notes, "color": color,
+             "starts_at": starts_at, "created_at": now_iso(), "reminded_at": None}
+        self.events[e["id"]] = e
+        self.next_event += 1
+        return self._event(e)
+
+    def get_event(self, event_id, user_id):
+        e = self.events.get(event_id)
+        return self._event(e) if e and e["user_id"] == user_id else None
+
+    def list_events(self, user_id, start_iso, end_iso):
+        rows = [e for e in self.events.values()
+                if e["user_id"] == user_id and start_iso <= e["starts_at"] < end_iso]
+        rows.sort(key=lambda e: (e["starts_at"], e["id"]))
+        return [self._event(e) for e in rows]
+
+    def count_events(self, user_id):
+        return len([e for e in self.events.values() if e["user_id"] == user_id])
+
+    def update_event(self, event_id, user_id, title=None, notes=None, color=None, starts_at=None):
+        e = self.events.get(event_id)
+        if not e or e["user_id"] != user_id:
+            return None
+        for key, val in (("title", title), ("notes", notes), ("color", color), ("starts_at", starts_at)):
+            if val is not None:
+                e[key] = val
+        if starts_at is not None:
+            e["reminded_at"] = None
+        return self._event(e)
+
+    def delete_event(self, event_id, user_id):
+        e = self.events.get(event_id)
+        if not e or e["user_id"] != user_id:
+            return False
+        del self.events[event_id]
+        return True
+
+    def list_due_event_reminders(self, now_iso, until_iso, limit=50):
+        out = []
+        for e in sorted(self.events.values(), key=lambda e: e["starts_at"]):
+            u = self.users[e["user_id"]]
+            if (e["reminded_at"] is None and now_iso < e["starts_at"] <= until_iso and u.get("email")):
+                out.append({"id": e["id"], "title": e["title"], "notes": e["notes"], "starts_at": e["starts_at"],
+                            "email": u["email"], "username": u["username"], "timezone": u["timezone"]})
+        return out[:limit]
+
+    def claim_event_reminder(self, event_id, now_iso):
+        e = self.events.get(event_id)
+        if not e or e["reminded_at"] is not None:
+            return False
+        e["reminded_at"] = now_iso
+        return True
+
+    def release_event_reminder(self, event_id):
+        if event_id in self.events:
+            self.events[event_id]["reminded_at"] = None
+
     # push subscriptions
     def upsert_push_subscription(self, user_id, endpoint, p256dh, auth, user_agent=None):
         for s in self.subs:
@@ -346,6 +424,9 @@ STORE_NAMES = [
     "release_todo_reminder",
     "add_habit", "get_habit", "list_habits", "count_habits", "update_habit", "delete_habit",
     "set_habit_log", "delete_habit_log", "list_habit_logs",
+    "set_user_email", "get_last_checkin_time", "list_pulses",
+    "add_event", "get_event", "list_events", "count_events", "update_event", "delete_event",
+    "list_due_event_reminders", "claim_event_reminder", "release_event_reminder",
 ]
 
 
@@ -373,7 +454,7 @@ class AppTestCase(unittest.TestCase):
             patch.object(main, "bootstrap_admin_if_configured", lambda: None),
             patch.dict(os.environ, {"TRUSTED_PROXY_HOPS": "1"}),
         ]
-        for module in (main, scheduler, push, todos, habits):
+        for module in (main, scheduler, push, todos, habits, planner):
             for name in STORE_NAMES:
                 if hasattr(module, name):
                     patchers.append(patch.object(module, name, getattr(self.store, name)))
