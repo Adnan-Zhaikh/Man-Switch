@@ -6,6 +6,7 @@ A self-hosted accountability journal and dead-man's switch. Check in regularly; 
 
 ## Features
 
+- **Dashboard:** consistency score and streaks, a 13-week activity heatmap, habit completion, tasks finished vs moved to a later day, check-in safety margin, weekday and time-of-day patterns, and plain-language insights. Switch between 7, 30 and 90 days.
 - **Check-in:** press and hold a button for a second (optionally pick a mood). No typing. Resets your deadline.
 - **Journal, Goals, Important:** notes with optional photos, full edit and delete. Posting also resets the deadline.
 - **Habits:** daily streaks with a GitHub-style commit grid.
@@ -50,6 +51,12 @@ Render's free tier blocks SMTP ports, so use an email provider's HTTPS API:
 
 Reminders go out on the first scheduler check after the one-hour mark, so timing is within the check interval (5 minutes in-app, plus your cron ping). Each event is emailed once; moving it to a new time re-arms the reminder.
 
+### Dashboard notes
+
+- An **active day** is any day with a check-in, post, habit commit or finished task. Today never counts against you until it ends.
+- **Moved to a later day** is counted whenever a task's day moves later (for example to tomorrow). It started counting when the dashboard was added, so older tasks show zero.
+- Insights are simple rules with minimum-data checks (about a week of use), not AI.
+
 ## Environment variables
 
 | Variable | Purpose |
@@ -76,6 +83,7 @@ See `.env.example` for the full list. Keep `.env` out of git; the Supabase secre
 | Area | Routes |
 | --- | --- |
 | Auth | `/auth/register` (optional `email`), `/auth/login`, `/auth/logout`, `/auth/me`, `PUT /auth/email` |
+| Dashboard | `GET /dashboard?range=7\|30\|90&tz=` (read-only, your own data) |
 | Check-in | `GET/POST /pulse` (hold-to-confirm, optional `mood`) |
 | Posts | `POST /checkin` (journal/task/important), `PUT/DELETE /checkin/{id}`, `GET /history?category=` |
 | Calendar | `GET /events?start=&end=`, `POST /events`, `PATCH/DELETE /events/{id}` (needs an email on the account) |
@@ -97,7 +105,7 @@ Over a rate limit the API returns `429` with `Retry-After`. Counters are in memo
 ## Roadmap
 
 - [x] Edit/delete entries, habit streaks, multiple users
-- [x] Calendar with email reminders, hold-to-confirm check-in
+- [x] Calendar with email reminders, hold-to-confirm check-in, dashboard with insights
 - [ ] Verify email addresses before sending reminders
 - [ ] Recurring calendar events
 - [ ] Full-text search, export as JSON/CSV

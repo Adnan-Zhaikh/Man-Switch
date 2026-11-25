@@ -9,8 +9,10 @@
 <link rel="icon" href="/icon-192.png">
 <style>
 :root{--serif:Georgia,"Times New Roman",serif;--sans:system-ui,-apple-system,"Segoe UI",sans-serif}
-:root[data-theme="dark"]{--c-checkin:#ff4560;--c-journal:#3d9bff;--c-habits:#ffd21f;--c-calendar:#19d3ec;--c-task:#38e060;--c-important:#ff8c1a;--c-more:#bdf02e;--bad:#ff6b6b}
-:root[data-theme="light"]{--c-checkin:#d11237;--c-journal:#0a5fd8;--c-habits:#8f6a00;--c-calendar:#00778c;--c-task:#0f7a31;--c-important:#c75300;--c-more:#587f00;--bad:#c0192b}
+:root[data-theme="dark"]{--c-checkin:#ff4560;--c-journal:#3d9bff;--c-habits:#ffd21f;--c-calendar:#19d3ec;--c-task:#38e060;--c-important:#ff8c1a;--c-more:#bdf02e;--c-dashboard:#ff5c93;--bad:#ff6b6b}
+:root[data-theme="light"]{--c-checkin:#d11237;--c-journal:#0a5fd8;--c-habits:#8f6a00;--c-calendar:#00778c;--c-task:#0f7a31;--c-important:#c75300;--c-more:#587f00;--c-dashboard:#d1105a;--bad:#c0192b}
+:root[data-theme="dark"][data-page="dashboard"]{--bg:#150a10;--sf:#22111a;--ln:#4a2238;--ac:#ff5c93;--ak:#2b0716;--mu:#c297ab;--tx:#fdecf3}
+:root[data-theme="light"][data-page="dashboard"]{--bg:#fff2f7;--sf:#ffffff;--ln:#f6d0e0;--ac:#d1105a;--ak:#ffffff;--mu:#8a566e;--tx:#33081e}
 :root[data-theme="dark"][data-page="checkin"]{--bg:#150a0d;--sf:#211217;--ln:#4a2230;--ac:#ff4560;--ak:#2b0710;--mu:#bf939c;--tx:#fdecee}
 :root[data-theme="dark"][data-page="journal"]{--bg:#08101a;--sf:#0f1a2b;--ln:#1c3558;--ac:#3d9bff;--ak:#04182f;--mu:#8aa0bf;--tx:#e9f1fc}
 :root[data-theme="dark"][data-page="habits"]{--bg:#0e0c04;--sf:#18150a;--ln:#332e12;--ac:#ffd21f;--ak:#241c02;--mu:#aba074;--tx:#f7f1d9}
@@ -49,6 +51,7 @@ nav button{display:flex;align-items:center;gap:12px;background:none;border:0;bor
 nav button svg{width:22px;height:22px;flex:none;fill:none;stroke:var(--c);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 nav button.on{color:var(--c);font-weight:700;background:color-mix(in srgb,var(--c) 16%,transparent)}
 nav button[data-page=checkin]{--c:var(--c-checkin)}
+nav button[data-page=dashboard]{--c:var(--c-dashboard)}
 nav button[data-page=journal]{--c:var(--c-journal)}
 nav button[data-page=habits]{--c:var(--c-habits)}
 nav button[data-page=calendar]{--c:var(--c-calendar)}
@@ -59,7 +62,7 @@ main{padding:24px 22px;max-width:660px;width:100%}
 .top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
 .mbrand{display:none;font-family:var(--serif);font-size:20px;color:var(--ac)}
 #userBadge{font-size:13px;color:var(--mu)}
-#logoutBtn,#themeBtn,#emailBtn,#notifyBtn,#notifyTest,#adminLink,#todoLink{background:none;border:1px solid var(--ln);color:var(--mu);border-radius:18px;padding:5px 13px;font:inherit;font-size:13px;cursor:pointer;text-decoration:none}
+#logoutBtn,#themeBtn,#importantBtn,#emailBtn,#notifyBtn,#notifyTest,#adminLink,#todoLink{background:none;border:1px solid var(--ln);color:var(--mu);border-radius:18px;padding:5px 13px;font:inherit;font-size:13px;cursor:pointer;text-decoration:none}
 #notifyBtn:disabled{opacity:.6;cursor:default}
 #notifyBtn.on{color:var(--ac);border-color:var(--ac)}
 #notifyHint{margin:10px 0 0;font-size:13px;color:var(--ac);display:none}
@@ -111,7 +114,7 @@ textarea:focus{outline:none}
 #notifyHint{margin:0 0 12px}
 /* ---- Habits ---- */
 .hbar{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:4px 0 12px}
-#hTitle,#calTitle{font-family:var(--sans);font-weight:700;font-size:26px;line-height:1.15;margin:0;color:var(--tx)}
+#hTitle,#calTitle,#dashTitle{font-family:var(--sans);font-weight:700;font-size:26px;line-height:1.15;margin:0;color:var(--tx)}
 #hTitle em{font-style:normal;color:var(--mu);font-weight:600}
 .pill{background:var(--ac);color:var(--ak);border:0;border-radius:20px;padding:8px 16px;font:inherit;font-weight:700;font-size:14px;cursor:pointer;white-space:nowrap}
 .strip{display:flex;gap:4px;overflow-x:auto;padding:4px 0 10px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
@@ -220,6 +223,61 @@ textarea.fi{min-height:84px;resize:none;font-size:16px}
 .timerow{display:flex;gap:8px}
 .timerow .fi{flex:1;min-width:0}
 .evhint{font-size:13px;color:var(--mu);margin:10px 0 0}
+/* ---- Dashboard ---- */
+.seg{display:inline-flex;border:1px solid var(--ln);border-radius:12px;overflow:hidden}
+.seg button{border:0;background:none;color:var(--mu);font:inherit;font-size:14px;padding:8px 14px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--ac);color:var(--ak);font-weight:700}
+.dh{font-family:var(--sans);font-size:16px;margin:20px 0 10px;color:var(--tx)}
+.dcard{background:var(--sf);border:1px solid var(--ln);border-radius:16px;padding:16px;margin-bottom:14px}
+.dcard h2{font-family:var(--sans);font-size:16px;margin:0 0 4px;color:var(--tx)}
+.dsub{color:var(--mu);font-size:13.5px;margin:0 0 12px;line-height:1.45}
+.dsub b{color:var(--tx)}
+.hero{display:flex;gap:20px;align-items:center;flex-wrap:wrap}
+.ring{position:relative;width:132px;height:132px;flex:none}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring .trk{stroke:var(--ln)}
+.ring .val{stroke:var(--ac);stroke-linecap:round}
+.ring .num{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:700;font-size:30px;line-height:1}
+.ring .num small{font-size:12px;color:var(--mu);font-weight:400;margin-top:5px}
+.herotext{flex:1 1 150px;min-width:0}
+.herolabel{font-family:var(--serif);font-size:26px;font-weight:700;color:var(--ac);margin-bottom:6px}
+.herotext p{margin:3px 0;color:var(--mu);font-size:14.5px;line-height:1.45}
+.herotext p b{color:var(--tx)}
+.delta{display:inline-block;font-size:13px;color:var(--mu);margin-top:4px}
+.delta.up{color:var(--c-task)}.delta.down{color:var(--bad)}
+.ins{display:flex;gap:12px;padding:12px 14px;border-radius:12px;border:1px solid var(--ln);background:var(--sf);margin-bottom:8px;font-size:15px;line-height:1.45}
+.ins::before{content:"";width:5px;border-radius:3px;background:var(--ic);flex:none}
+.ins.good{--ic:var(--c-task)}.ins.tip{--ic:var(--c-habits)}.ins.note{--ic:var(--c-journal)}
+.itag{display:block;font-size:12.5px;color:var(--mu);font-weight:600;margin-bottom:2px}
+.heat{display:grid;grid-auto-flow:column;grid-template-rows:repeat(7,1fr);gap:3px}
+.heat i{aspect-ratio:1;border-radius:3px;background:var(--ln);min-width:0}
+.heat i.x{background:none}
+.heat i[data-l="1"]{background:color-mix(in srgb,var(--ac) 30%,var(--ln))}
+.heat i[data-l="2"]{background:color-mix(in srgb,var(--ac) 55%,var(--ln))}
+.heat i[data-l="3"]{background:color-mix(in srgb,var(--ac) 80%,var(--ln))}
+.heat i[data-l="4"]{background:var(--ac)}
+.legend{display:flex;align-items:center;gap:4px;justify-content:flex-end;font-size:12px;color:var(--mu);margin-top:8px}
+.legend i{width:12px;height:12px;border-radius:3px;background:var(--ln);display:inline-block}
+.kv{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:4px 0 14px}
+.kv div{background:var(--bg);border:1px solid var(--ln);border-radius:12px;padding:10px 12px}
+.kv small{display:block;color:var(--mu);font-size:12.5px}
+.kv b{display:block;font-size:19px;margin-top:2px}
+.vbars{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;height:130px;margin-top:6px}
+.vb{display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;font-size:11.5px;color:var(--mu)}
+.vb em{font-style:normal;color:var(--tx);font-size:12px}
+.vb .col{flex:1;width:100%;display:flex;align-items:flex-end;justify-content:center;min-height:0}
+.vb .col i{width:100%;max-width:30px;border-radius:6px 6px 0 0;background:var(--bc,var(--ac))}
+.hr{display:grid;grid-template-columns:92px 1fr 44px;gap:10px;align-items:center;font-size:14px;margin:9px 0}
+.hr span:last-child{text-align:right;color:var(--mu)}
+.bar{height:10px;background:var(--ln);border-radius:6px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--bc,var(--ac));border-radius:6px}
+.bar.bad i{background:var(--bad)}
+.hab{margin:12px 0}
+.hab-top{display:flex;justify-content:space-between;gap:10px;font-size:15px;margin-bottom:6px}
+.hab-top span{min-width:0;word-break:break-word}
+.hab small{display:block;color:var(--mu);font-size:12.5px;margin-top:4px}
+.dfoot{color:var(--mu);font-size:12.5px;margin:10px 0 0;line-height:1.45}
+.mobile-only{display:none}
 @media (max-width:759px){
   #authShell{margin-top:4vh}
   .app{display:block}
@@ -229,8 +287,12 @@ textarea.fi{min-height:84px;resize:none;font-size:16px}
   nav button{flex:1;min-width:0;flex-direction:column;justify-content:center;gap:3px;font-size:10px;text-align:center;border-radius:0;padding:9px 0 8px}
   nav button.on{background:none;box-shadow:inset 0 2px 0 var(--c)}
   .cd{min-height:52px}
+  nav button[data-page=important]{display:none}
+  .mobile-only{display:flex}
+  .ring{width:120px;height:120px}
+  .hr{grid-template-columns:78px 1fr 40px}
   .hold{width:196px;height:196px}
-  #hTitle,#calTitle{font-size:23px}
+  #hTitle,#calTitle,#dashTitle{font-size:23px}
   main{padding:18px 16px 96px}
   h1{font-size:34px}
 }
@@ -275,6 +337,7 @@ textarea.fi{min-height:84px;resize:none;font-size:16px}
       <div class="brand">Man Switch</div>
       <nav id="nav">
         <button data-page="checkin" class="on"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v8"/><path d="M6.3 6.8a8 8 0 1 0 11.4 0"/></svg><span>Check-in</span></button>
+        <button data-page="dashboard"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20v-7M12 20V5M19 20v-10"/></svg><span>Dashboard</span></button>
         <button data-page="journal"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M9 4v16"/></svg><span>Journal</span></button>
         <button data-page="habits"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c.6 3 4.5 5 4.5 9.5a4.5 4.5 0 0 1-9 0c0-1.8.9-3 2-4 0 1.8.8 2.8 1.8 2.8C11.3 8.8 10.9 5.6 12 3z"/></svg><span>Habits</span></button>
         <button data-page="calendar"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg><span>Calendar</span></button>
@@ -286,6 +349,19 @@ textarea.fi{min-height:84px;resize:none;font-size:16px}
 
     <main>
       <div class="top"><span class="mbrand">Man Switch</span></div>
+
+      <div id="dashView" class="hidden">
+        <div class="hbar">
+          <h1 id="dashTitle">Dashboard</h1>
+          <div class="seg" id="dashRange" role="group" aria-label="Time range">
+            <button type="button" data-r="7" aria-pressed="false">7 days</button>
+            <button type="button" data-r="30" aria-pressed="true">30 days</button>
+            <button type="button" data-r="90" aria-pressed="false">90 days</button>
+          </div>
+        </div>
+        <div id="dashMsg" class="mmsg" role="status" aria-live="polite"></div>
+        <div id="dashBody"></div>
+      </div>
 
       <div id="checkinView" class="hidden">
         <h1>Check in</h1>
@@ -388,6 +464,7 @@ textarea.fi{min-height:84px;resize:none;font-size:16px}
         <p class="sub">Account, alerts and the rest.</p>
         <div class="group">
           <div class="line"><span class="what">Signed in<small id="userBadge"></small></span><button id="logoutBtn" type="button">Logout</button></div>
+          <div class="line mobile-only"><span class="what">Important<small>Notes you can't afford to lose</small></span><button id="importantBtn" type="button">Open</button></div>
           <div class="line"><span class="what">Email<small id="emailLabel">Not set. Needed for calendar reminders.</small></span><button id="emailBtn" type="button">Add</button></div>
           <div class="line"><span class="what">Appearance<small>Dark or light mode</small></span><button id="themeBtn" type="button">Light</button></div>
         </div>
@@ -505,7 +582,7 @@ const COPY={
   task:{t:"Tasks / Goals",s:"Turn your plans into progress.",ph:"What are you working on, and what's next?",hint:""},
   important:{t:"Important saved",s:"Your links, notes and important stuff in one place.",ph:"Save a link, number or note",hint:"Keep real passwords in a password manager, not here."}
 };
-const PAGES=["checkin","journal","habits","calendar","task","important","more"];
+const PAGES=["checkin","dashboard","journal","habits","calendar","task","important","more"];
 let page=(()=>{try{const p=localStorage.getItem("page");return PAGES.includes(p)?p:"checkin"}catch(e){return"checkin"}})(),file=null,editingId=null,editFile=null,editRemove=false,authMode="login",currentUser=null;
 const $=id=>document.getElementById(id);
 const root=document.documentElement;
@@ -520,7 +597,7 @@ $("themeBtn").onclick=()=>setTheme(root.dataset.theme==="dark"?"light":"dark");
 
 function showAuth(){
   closeEditModal();
-  habitsReset();checkinReset();calReset();
+  habitsReset();checkinReset();calReset();dashReset();
   $("appShell").classList.add("hidden");
   $("authShell").classList.remove("hidden");
   $("authMsg").textContent="";
@@ -656,11 +733,14 @@ function showPage(p){
   page=p;
   root.dataset.page=p;
   try{localStorage.setItem("page",p)}catch(e){}
-  document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("on",b.dataset.page===p));
+  // On phones "Important" lives under More, so More stays highlighted there.
+  const navKey=(p==="important"&&window.matchMedia&&window.matchMedia("(max-width:759px)").matches)?"more":p;
+  document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("on",b.dataset.page===navKey));
   const posts=POST_PAGES.includes(p);
   $("postsView").classList.toggle("hidden",!posts);
   $("habitsView").classList.toggle("hidden",p!=="habits");
   $("checkinView").classList.toggle("hidden",p!=="checkin");
+  $("dashView").classList.toggle("hidden",p!=="dashboard");
   $("calendarView").classList.toggle("hidden",p!=="calendar");
   $("moreView").classList.toggle("hidden",p!=="more");
   window.scrollTo(0,0);
@@ -674,6 +754,7 @@ function showPage(p){
     loadFeed();
   }else if(p==="habits"){loadHabits()}
   else if(p==="checkin"){loadPulse()}
+  else if(p==="dashboard"){loadDashboard()}
   else if(p==="calendar"){loadCalendar()}
 }
 document.querySelectorAll("#nav button").forEach(b=>b.onclick=()=>showPage(b.dataset.page));
@@ -1248,6 +1329,109 @@ $("evDelete").onclick=async()=>{
   catch(e){$("evMsg").textContent=e.message}
 };
 $("evTitle").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();$("evSave").click()}});
+
+/* ---- Dashboard ---- */
+const DASH={range:30,token:0};
+try{const r=parseInt(localStorage.getItem("dashRange"),10);if([7,30,90].includes(r))DASH.range=r}catch(e){}
+const fmtH=h=>h==null?"-":h<48?Math.round(h)+" h":(Math.round(h/2.4)/10)+" days";
+const pctTxt=v=>v==null?"-":v+"%";
+const plural=(n,w)=>n+" "+w+(n===1?"":"s");
+function dashReset(){DASH.token++;$("dashBody").innerHTML="";$("dashMsg").textContent=""}
+function syncRange(){document.querySelectorAll("#dashRange button").forEach(b=>b.setAttribute("aria-pressed",String(parseInt(b.dataset.r,10)===DASH.range)))}
+document.querySelectorAll("#dashRange button").forEach(b=>b.onclick=()=>{
+  DASH.range=parseInt(b.dataset.r,10);
+  try{localStorage.setItem("dashRange",String(DASH.range))}catch(e){}
+  syncRange();loadDashboard();
+});
+syncRange();
+function deltaHtml(d,label){
+  if(d==null)return"";
+  if(d===0)return`<span class="delta">No change ${esc(label)}</span>`;
+  return`<span class="delta ${d>0?"up":"down"}">${d>0?"&#9650;":"&#9660;"} ${Math.abs(d)} points ${esc(label)}</span>`;
+}
+function ringHtml(score){
+  const C=2*Math.PI*54,off=score==null?C:C*(1-score/100);
+  return`<div class="ring" role="img" aria-label="Consistency: ${score==null?"not available yet":score+" percent"}"><svg viewBox="0 0 120 120" aria-hidden="true"><circle class="trk" cx="60" cy="60" r="54" fill="none" stroke-width="10"/><circle class="val" cx="60" cy="60" r="54" fill="none" stroke-width="10" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}"/></svg><div class="num">${score==null?"&ndash;":score+"%"}<small>consistent</small></div></div>`;
+}
+function vbars(items,color){
+  return'<div class="vbars">'+items.map(it=>{
+    const v=it.value,h=v==null?0:Math.max(3,v);
+    return`<div class="vb" title="${esc(it.title||"")}"><em>${v==null?"&ndash;":v+"%"}</em><div class="col"><i style="height:${h}%${color?";--bc:"+esc(color):""}"></i></div><span>${esc(it.label)}</span></div>`;
+  }).join("")+"</div>";
+}
+function hrows(items){
+  return items.map(it=>`<div class="hr"><span>${esc(it.label)}</span><div class="bar"><i style="width:${Math.min(100,it.pct)}%"></i></div><span>${it.pct}%</span></div>`).join("");
+}
+function heatHtml(cells){
+  const pad=wdIdx(pd(cells[0].date));
+  let h='<div class="heat">'+'<i class="x"></i>'.repeat(pad);
+  cells.forEach(c=>{
+    const l=c.count===0?0:c.count===1?1:c.count===2?2:c.count<=4?3:4;
+    h+=`<i data-l="${l}" title="${esc(pd(c.date).toLocaleDateString(undefined,{weekday:"short",day:"numeric",month:"short"}))}: ${plural(c.count,"action")}"></i>`;
+  });
+  return h+"</div>";
+}
+const INS_TAG={good:"Going well",tip:"Try this",note:"Worth knowing"};
+function renderDashboard(d){
+  const c=d.consistency,n=d.range,h=d.habits,t=d.tasks,k=d.checkins,p=d.patterns;
+  let out="";
+  // consistency
+  const since=c.window_days<n?"since you started":`in the last ${n} days`;
+  out+=`<div class="dcard hero">${ringHtml(c.score)}<div class="herotext"><div class="herolabel">${esc(c.label)}</div>`+
+    (c.score==null?`<p>Check in, post, tick off a habit or finish a task, and this fills in.</p>`:
+      `<p><b>${c.active_days}</b> of ${c.window_days} days active ${since}.</p><p>Streak <b>${plural(c.streak,"day")}</b> &middot; best <b>${plural(c.best_streak,"day")}</b></p>${deltaHtml(c.delta,"vs the previous "+n+" days")}`)+
+    `</div></div>`;
+  // insights
+  if(d.insights.length)out+=`<h2 class="dh">Insights</h2>`+d.insights.map(i=>`<div class="ins ${esc(i.kind)}"><span><b class="itag">${esc(INS_TAG[i.kind]||"Note")}</b>${esc(i.text)}</span></div>`).join("");
+  // heatmap
+  const act=d.heatmap.filter(x=>x.count>0).length;
+  out+=`<h2 class="dh">Activity</h2><div class="dcard"><p class="dsub">${plural(act,"active day")} in the last 13 weeks. Counts check-ins, posts, habit commits and finished tasks.</p><div role="img" aria-label="Activity heatmap, ${plural(act,"active day")} in the last 13 weeks">${heatHtml(d.heatmap)}</div><div class="legend">Less <i></i><i style="background:color-mix(in srgb,var(--ac) 30%,var(--ln))"></i><i style="background:color-mix(in srgb,var(--ac) 55%,var(--ln))"></i><i style="background:color-mix(in srgb,var(--ac) 80%,var(--ln))"></i><i style="background:var(--ac)"></i> More</div></div>`;
+  // habits
+  out+=`<h2 class="dh">Habits</h2><div class="dcard">`;
+  if(!h.count)out+=`<p class="dsub">Add a habit on the Habits page and its completion and streaks show up here.</p>`;
+  else{
+    out+=`<p class="dsub"><b>${pctTxt(h.rate)}</b> of scheduled habit days done (${h.done} of ${h.due}). ${deltaHtml(h.delta,"vs previous")}</p>`;
+    out+=h.habits.map(x=>`<div class="hab"><div class="hab-top"><span>${esc(x.icon)} ${esc(x.name)}</span><b>${pctTxt(x.rate)}</b></div><div class="bar"><i style="width:${x.rate||0}%;--bc:${esc(x.color)}"></i></div><small>${x.due?`${x.done} of ${x.due} days &middot; `:""}streak ${x.streak} &middot; best ${x.best_streak}${x.at_risk?" &middot; due today":""}</small></div>`).join("");
+    out+=`<p class="dsub" style="margin-top:16px">Which days go best</p>`+vbars(h.weekdays.map(w=>({label:w.day,value:w.rate,title:w.due?`${w.done} of ${w.due} done`:"Nothing scheduled"})));
+    out+=`<p class="dfoot">Habits with a streak right now: ${h.active_streaks} of ${h.count}. Longest streak ever: ${plural(h.best_streak,"day")}.</p>`;
+  }
+  out+=`</div>`;
+  // tasks
+  out+=`<h2 class="dh">Tasks</h2><div class="dcard">`;
+  if(!t.planned&&!t.postponed_events&&!t.open_overdue)out+=`<p class="dsub">No tasks planned in this period yet.</p>`;
+  else{
+    out+=`<div class="kv"><div><small>Finished</small><b>${t.done} of ${t.planned}</b></div><div><small>Completion</small><b>${pctTxt(t.rate)}</b></div><div><small>Moved to a later day</small><b>${t.postponed_events}</b></div><div><small>Still open and overdue</small><b>${t.open_overdue}</b></div></div>`;
+    out+=`<p class="dsub">${t.done?`Of the ${t.done} you finished, <b>${t.on_time}</b> were done on the planned day and <b>${t.late}</b> later. `:""}On average you plan ${t.avg_planned_per_day} and finish ${t.avg_done_per_day} a day. ${deltaHtml(t.delta,"completion vs previous")}</p>`;
+    if(t.most_postponed)out+=`<p class="dsub">Most pushed: <b>${esc(t.most_postponed.title)}</b> (${plural(t.most_postponed.times,"time")}).</p>`;
+    out+=`<p class="dsub" style="margin-top:16px">Completion by day of the week</p>`+vbars(t.weekdays.map(w=>({label:w.day,value:w.rate,title:w.planned?`${w.done} of ${w.planned} finished`:"No tasks"})));
+    if(!t.postponed_events)out+=`<p class="dfoot">Moves to a later day are counted from the day this dashboard was added, so older tasks show zero.</p>`;
+  }
+  out+=`</div>`;
+  // check-ins
+  const pct=k.longest_pct==null?0:k.longest_pct;
+  out+=`<h2 class="dh">Check-ins</h2><div class="dcard"><div class="kv"><div><small>Check-in button used</small><b>${k.pulse_days}${k.window_days?" of "+k.window_days:""} days</b></div><div><small>Journal and other posts</small><b>${k.posts}</b></div><div><small>Typical gap between entries</small><b>${fmtH(k.avg_gap_hours)}</b></div><div><small>Past your deadline</small><b>${plural(k.past_deadline,"time")}</b></div></div>`;
+  out+=k.longest_gap_hours==null?`<p class="dsub">Your safety margin shows up after a couple of check-ins.</p>`:
+    `<p class="dsub">Longest quiet stretch: <b>${fmtH(k.longest_gap_hours)}</b> against your ${k.deadline_hours} h deadline.</p><div class="bar${pct>=100?" bad":""}" role="img" aria-label="Longest quiet stretch was ${pct} percent of your deadline"><i style="width:${Math.min(100,pct)}%"></i></div>`;
+  out+=`</div>`;
+  // patterns
+  out+=`<h2 class="dh">Your patterns</h2><div class="dcard"><p class="dsub">Share of each weekday you were active</p>`+vbars(p.weekdays.map(w=>({label:w.day,value:w.rate,title:w.days?`${w.active} of ${w.days} active`:"No data"})));
+  out+=p.time_of_day.total?`<p class="dsub" style="margin-top:18px">When you act</p>`+hrows(p.time_of_day.buckets.map(b=>({label:b.name,pct:b.pct}))):"";
+  out+=`</div>`;
+  $("dashBody").innerHTML=out;
+}
+async function loadDashboard(){
+  const my=++DASH.token;
+  $("dashMsg").textContent="Loading...";
+  const tz=Intl.DateTimeFormat().resolvedOptions().timeZone||"UTC";
+  try{
+    let d;
+    try{d=await hApi(`/dashboard?range=${DASH.range}&tz=${encodeURIComponent(tz)}`)}
+    catch(e){if(/time zone/i.test(e.message||""))d=await hApi(`/dashboard?range=${DASH.range}`);else throw e}
+    if(my!==DASH.token)return;
+    $("dashMsg").textContent="";renderDashboard(d);
+  }catch(e){if(my===DASH.token&&$("authShell").classList.contains("hidden"))$("dashMsg").textContent=e.message||"Couldn't load the dashboard."}
+}
+$("importantBtn").onclick=()=>showPage("important");
 
 async function init(){
   try{const c=await (await fetch("/auth/config")).json();$("registerTab").classList.toggle("hidden",!c.registration_open)}catch(e){}

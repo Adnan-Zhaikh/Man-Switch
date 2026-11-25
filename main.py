@@ -58,6 +58,7 @@ from push import is_configured as push_is_configured
 from push import public_key as push_public_key
 from push import send_to_user, validate_subscription
 from ratelimit import RateLimiter
+import dashboard
 import emailer
 import habits
 import planner
@@ -592,6 +593,7 @@ def pulse(body: PulseIn, user=Depends(get_current_user)):
 app.include_router(todos.build_router(get_current_user, enforce, write_limiter, client_ip, _too_many))
 app.include_router(habits.build_router(get_current_user, enforce, write_limiter))
 app.include_router(planner.build_router(get_current_user, enforce, write_limiter))
+app.include_router(dashboard.build_router(get_current_user))
 
 
 @app.get("/todo")

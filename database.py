@@ -111,6 +111,7 @@ def init_db():
             )
             '''
         )
+        cursor.execute("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS postponed INTEGER NOT NULL DEFAULT 0")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_tasks_user_day ON tasks (user_id, day)")
         cursor.execute(
             '''
@@ -349,6 +350,16 @@ def delete_checkin(checkin_id, user_id):
     return row[0], True
 
 
+def list_activity(user_id, since_iso, limit=20000):
+    """(timestamp, category) of every post and check-in since a moment, oldest first."""
+    with _cursor(dict_rows=True) as cursor:
+        cursor.execute(
+            "SELECT timestamp, category FROM checkins WHERE user_id = %s AND timestamp >= %s ORDER BY timestamp LIMIT %s",
+            (user_id, since_iso, limit),
+        )
+        return [dict(r) for r in cursor.fetchall()]
+
+
 def get_last_checkin_time(user_id):
     """Timestamp of the newest entry of any kind (posts and check-ins both reset the deadline)."""
     with _cursor() as cursor:
@@ -455,7 +466,7 @@ def delete_push_subscription(endpoint, user_id=None):
 
 # ---- to-do tasks ------------------------------------------------------------
 
-_TASK_COLUMNS = "id, title, day, priority, created_at, done_at"
+_TASK_COLUMNS = "id, title, day, priority, created_at, done_at, postponed"
 
 
 def add_task(user_id, title, day, priority=0):
@@ -509,6 +520,9 @@ def update_task(task_id, user_id, title=None, day=None, priority=None, done=None
         params.append(title)
     if day is not None:
         sets.append("day = %s")
+        params.append(day)
+        # Moving a task to a later day counts as a postponement (the right-hand side sees the old day).
+        sets.append("postponed = postponed + (CASE WHEN %s > day THEN 1 ELSE 0 END)")
         params.append(day)
     if priority is not None:
         sets.append("priority = %s")
@@ -713,7 +727,7 @@ def list_habit_logs(user_id):
     """Every commit the user has made (a few small rows per habit per day)."""
     with _cursor(dict_rows=True) as cursor:
         cursor.execute(
-            "SELECT habit_id, day, note FROM habit_logs WHERE user_id = %s ORDER BY day", (user_id,)
+            "SELECT habit_id, day, note, created_at FROM habit_logs WHERE user_id = %s ORDER BY day", (user_id,)
         )
         return [dict(r) for r in cursor.fetchall()]
 

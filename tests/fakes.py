@@ -13,6 +13,7 @@ import push  # noqa: E402
 import ratelimit  # noqa: E402
 import scheduler  # noqa: E402
 import habits  # noqa: E402
+import dashboard  # noqa: E402
 import planner  # noqa: E402
 import todo_logic  # noqa: E402
 import todos  # noqa: E402
@@ -115,6 +116,12 @@ class FakeStore:
         rows.sort(key=lambda c: c["timestamp"], reverse=True)
         return [self._row(c) for c in rows]
 
+    def list_activity(self, user_id, since_iso, limit=20000):
+        rows = [{"timestamp": c["timestamp"], "category": c["category"]} for c in self.checkins.values()
+                if c["user_id"] == user_id and c["timestamp"] >= since_iso]
+        rows.sort(key=lambda r: r["timestamp"])
+        return rows[:limit]
+
     def get_checkin_by_id(self, checkin_id, user_id):
         c = self.checkins.get(checkin_id)
         return self._row(c) if c and c["user_id"] == user_id else None
@@ -167,14 +174,14 @@ class FakeStore:
     # tasks
     def add_task(self, user_id, title, day, priority=0):
         t = {"id": self.next_task, "user_id": user_id, "title": title, "day": day,
-             "priority": priority, "created_at": todo_logic.utcnow().isoformat(), "done_at": None}
+             "priority": priority, "created_at": todo_logic.utcnow().isoformat(), "done_at": None, "postponed": 0}
         self.tasks[t["id"]] = t
         self.next_task += 1
         return self._task(t)
 
     @staticmethod
     def _task(t):
-        return {k: t[k] for k in ("id", "title", "day", "priority", "created_at", "done_at")}
+        return {k: t[k] for k in ("id", "title", "day", "priority", "created_at", "done_at", "postponed")}
 
     def get_task(self, task_id, user_id):
         t = self.tasks.get(task_id)
@@ -198,6 +205,8 @@ class FakeStore:
         if title is not None:
             t["title"] = title
         if day is not None:
+            if day > t["day"]:
+                t["postponed"] += 1
             t["day"] = day
         if priority is not None:
             t["priority"] = priority
@@ -297,7 +306,7 @@ class FakeStore:
         return True
 
     def set_habit_log(self, habit_id, user_id, day, note=None):
-        row = self.habit_logs.setdefault((habit_id, day), {"user_id": user_id, "habit_id": habit_id, "day": day, "note": ""})
+        row = self.habit_logs.setdefault((habit_id, day), {"user_id": user_id, "habit_id": habit_id, "day": day, "note": "", "created_at": now_iso()})
         if note is not None:
             row["note"] = note
         return {"day": day, "note": row["note"]}
@@ -311,7 +320,7 @@ class FakeStore:
 
     def list_habit_logs(self, user_id):
         rows = [v for v in self.habit_logs.values() if v["user_id"] == user_id]
-        return sorted(({"habit_id": v["habit_id"], "day": v["day"], "note": v["note"]} for v in rows), key=lambda r: r["day"])
+        return sorted(({"habit_id": v["habit_id"], "day": v["day"], "note": v["note"], "created_at": v.get("created_at")} for v in rows), key=lambda r: r["day"])
 
     # calendar events
     _EVENT_KEYS = ("id", "title", "notes", "color", "starts_at", "created_at", "reminded_at")
@@ -424,7 +433,7 @@ STORE_NAMES = [
     "release_todo_reminder",
     "add_habit", "get_habit", "list_habits", "count_habits", "update_habit", "delete_habit",
     "set_habit_log", "delete_habit_log", "list_habit_logs",
-    "set_user_email", "get_last_checkin_time", "list_pulses",
+    "set_user_email", "get_last_checkin_time", "list_pulses", "list_activity",
     "add_event", "get_event", "list_events", "count_events", "update_event", "delete_event",
     "list_due_event_reminders", "claim_event_reminder", "release_event_reminder",
 ]
@@ -454,7 +463,7 @@ class AppTestCase(unittest.TestCase):
             patch.object(main, "bootstrap_admin_if_configured", lambda: None),
             patch.dict(os.environ, {"TRUSTED_PROXY_HOPS": "1"}),
         ]
-        for module in (main, scheduler, push, todos, habits, planner):
+        for module in (main, scheduler, push, todos, habits, planner, dashboard):
             for name in STORE_NAMES:
                 if hasattr(module, name):
                     patchers.append(patch.object(module, name, getattr(self.store, name)))
