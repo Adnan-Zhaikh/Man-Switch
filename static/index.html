@@ -233,12 +233,12 @@ textarea.fi{min-height:84px;resize:none;font-size:16px}
 .dsub{color:var(--mu);font-size:13.5px;margin:0 0 12px;line-height:1.45}
 .dsub b{color:var(--tx)}
 .hero{display:flex;gap:20px;align-items:center;flex-wrap:wrap}
-.ring{position:relative;width:132px;height:132px;flex:none}
-.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
-.ring .trk{stroke:var(--ln)}
-.ring .val{stroke:var(--ac);stroke-linecap:round}
-.ring .num{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:700;font-size:30px;line-height:1}
-.ring .num small{font-size:12px;color:var(--mu);font-weight:400;margin-top:5px}
+.dring{position:relative;width:132px;height:132px;flex:none}
+.dring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.dring .trk{stroke:var(--ln)}
+.dring .val{stroke:var(--ac);stroke-linecap:round}
+.dring .num{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:700;font-size:30px;line-height:1}
+.dring .num small{font-size:12px;color:var(--mu);font-weight:400;margin-top:5px}
 .herotext{flex:1 1 150px;min-width:0}
 .herolabel{font-family:var(--serif);font-size:26px;font-weight:700;color:var(--ac);margin-bottom:6px}
 .herotext p{margin:3px 0;color:var(--mu);font-size:14.5px;line-height:1.45}
@@ -269,9 +269,9 @@ textarea.fi{min-height:84px;resize:none;font-size:16px}
 .vb .col i{width:100%;max-width:30px;border-radius:6px 6px 0 0;background:var(--bc,var(--ac))}
 .hr{display:grid;grid-template-columns:92px 1fr 44px;gap:10px;align-items:center;font-size:14px;margin:9px 0}
 .hr span:last-child{text-align:right;color:var(--mu)}
-.bar{height:10px;background:var(--ln);border-radius:6px;overflow:hidden}
-.bar i{display:block;height:100%;background:var(--bc,var(--ac));border-radius:6px}
-.bar.bad i{background:var(--bad)}
+.dbar{height:10px;background:var(--ln);border-radius:6px;overflow:hidden}
+.dbar i{display:block;height:100%;background:var(--bc,var(--ac));border-radius:6px}
+.dbar.bad i{background:var(--bad)}
 .hab{margin:12px 0}
 .hab-top{display:flex;justify-content:space-between;gap:10px;font-size:15px;margin-bottom:6px}
 .hab-top span{min-width:0;word-break:break-word}
@@ -289,7 +289,7 @@ textarea.fi{min-height:84px;resize:none;font-size:16px}
   .cd{min-height:52px}
   nav button[data-page=important]{display:none}
   .mobile-only{display:flex}
-  .ring{width:120px;height:120px}
+  .dring{width:120px;height:120px}
   .hr{grid-template-columns:78px 1fr 40px}
   .hold{width:196px;height:196px}
   #hTitle,#calTitle,#dashTitle{font-size:23px}
@@ -1351,7 +1351,7 @@ function deltaHtml(d,label){
 }
 function ringHtml(score){
   const C=2*Math.PI*54,off=score==null?C:C*(1-score/100);
-  return`<div class="ring" role="img" aria-label="Consistency: ${score==null?"not available yet":score+" percent"}"><svg viewBox="0 0 120 120" aria-hidden="true"><circle class="trk" cx="60" cy="60" r="54" fill="none" stroke-width="10"/><circle class="val" cx="60" cy="60" r="54" fill="none" stroke-width="10" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}"/></svg><div class="num">${score==null?"&ndash;":score+"%"}<small>consistent</small></div></div>`;
+  return`<div class="dring" role="img" aria-label="Consistency: ${score==null?"not available yet":score+" percent"}"><svg viewBox="0 0 120 120" aria-hidden="true"><circle class="trk" cx="60" cy="60" r="54" fill="none" stroke-width="10"/><circle class="val" cx="60" cy="60" r="54" fill="none" stroke-width="10" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}"/></svg><div class="num">${score==null?"&ndash;":score+"%"}<small>consistent</small></div></div>`;
 }
 function vbars(items,color){
   return'<div class="vbars">'+items.map(it=>{
@@ -1360,7 +1360,7 @@ function vbars(items,color){
   }).join("")+"</div>";
 }
 function hrows(items){
-  return items.map(it=>`<div class="hr"><span>${esc(it.label)}</span><div class="bar"><i style="width:${Math.min(100,it.pct)}%"></i></div><span>${it.pct}%</span></div>`).join("");
+  return items.map(it=>`<div class="hr"><span>${esc(it.label)}</span><div class="dbar"><i style="width:${Math.min(100,it.pct)}%"></i></div><span>${it.pct}%</span></div>`).join("");
 }
 function heatHtml(cells){
   const pad=wdIdx(pd(cells[0].date));
@@ -1391,7 +1391,7 @@ function renderDashboard(d){
   if(!h.count)out+=`<p class="dsub">Add a habit on the Habits page and its completion and streaks show up here.</p>`;
   else{
     out+=`<p class="dsub"><b>${pctTxt(h.rate)}</b> of scheduled habit days done (${h.done} of ${h.due}). ${deltaHtml(h.delta,"vs previous")}</p>`;
-    out+=h.habits.map(x=>`<div class="hab"><div class="hab-top"><span>${esc(x.icon)} ${esc(x.name)}</span><b>${pctTxt(x.rate)}</b></div><div class="bar"><i style="width:${x.rate||0}%;--bc:${esc(x.color)}"></i></div><small>${x.due?`${x.done} of ${x.due} days &middot; `:""}streak ${x.streak} &middot; best ${x.best_streak}${x.at_risk?" &middot; due today":""}</small></div>`).join("");
+    out+=h.habits.map(x=>`<div class="hab"><div class="hab-top"><span>${esc(x.icon)} ${esc(x.name)}</span><b>${pctTxt(x.rate)}</b></div><div class="dbar"><i style="width:${x.rate||0}%;--bc:${esc(x.color)}"></i></div><small>${x.due?`${x.done} of ${x.due} days &middot; `:""}streak ${x.streak} &middot; best ${x.best_streak}${x.at_risk?" &middot; due today":""}</small></div>`).join("");
     out+=`<p class="dsub" style="margin-top:16px">Which days go best</p>`+vbars(h.weekdays.map(w=>({label:w.day,value:w.rate,title:w.due?`${w.done} of ${w.due} done`:"Nothing scheduled"})));
     out+=`<p class="dfoot">Habits with a streak right now: ${h.active_streaks} of ${h.count}. Longest streak ever: ${plural(h.best_streak,"day")}.</p>`;
   }
@@ -1411,7 +1411,7 @@ function renderDashboard(d){
   const pct=k.longest_pct==null?0:k.longest_pct;
   out+=`<h2 class="dh">Check-ins</h2><div class="dcard"><div class="kv"><div><small>Check-in button used</small><b>${k.pulse_days}${k.window_days?" of "+k.window_days:""} days</b></div><div><small>Journal and other posts</small><b>${k.posts}</b></div><div><small>Typical gap between entries</small><b>${fmtH(k.avg_gap_hours)}</b></div><div><small>Past your deadline</small><b>${plural(k.past_deadline,"time")}</b></div></div>`;
   out+=k.longest_gap_hours==null?`<p class="dsub">Your safety margin shows up after a couple of check-ins.</p>`:
-    `<p class="dsub">Longest quiet stretch: <b>${fmtH(k.longest_gap_hours)}</b> against your ${k.deadline_hours} h deadline.</p><div class="bar${pct>=100?" bad":""}" role="img" aria-label="Longest quiet stretch was ${pct} percent of your deadline"><i style="width:${Math.min(100,pct)}%"></i></div>`;
+    `<p class="dsub">Longest quiet stretch: <b>${fmtH(k.longest_gap_hours)}</b> against your ${k.deadline_hours} h deadline.</p><div class="dbar${pct>=100?" bad":""}" role="img" aria-label="Longest quiet stretch was ${pct} percent of your deadline"><i style="width:${Math.min(100,pct)}%"></i></div>`;
   out+=`</div>`;
   // patterns
   out+=`<h2 class="dh">Your patterns</h2><div class="dcard"><p class="dsub">Share of each weekday you were active</p>`+vbars(p.weekdays.map(w=>({label:w.day,value:w.rate,title:w.days?`${w.active} of ${w.days} active`:"No data"})));
