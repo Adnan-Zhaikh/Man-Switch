@@ -534,7 +534,11 @@ def delete_checkin_endpoint(checkin_id: int, user=Depends(get_current_user)):
 
 @app.get("/history")
 def history(category: str = None, user=Depends(get_current_user)):
-    rows = get_all_checkins(user["id"], category)
+    """Posts for the Journal page. No category, or "all", means every post except hold-to-confirm check-ins."""
+    if category in (None, "", "all"):
+        rows = get_all_checkins(user["id"], exclude_category=PULSE_CATEGORY)
+    else:
+        rows = get_all_checkins(user["id"], category)
     results = []
     for row in rows:
         item = {

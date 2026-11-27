@@ -293,9 +293,14 @@ def add_checkin(user_id, note, category="journal", image_url=None):
         )
 
 
-def get_all_checkins(user_id, category=None):
+def get_all_checkins(user_id, category=None, exclude_category=None):
     with _cursor() as cursor:
-        if category:
+        if exclude_category:
+            cursor.execute(
+                "SELECT id, timestamp, progress_note, image_url, category FROM checkins WHERE user_id = %s AND category <> %s ORDER BY timestamp DESC",
+                (user_id, exclude_category),
+            )
+        elif category:
             cursor.execute(
                 "SELECT id, timestamp, progress_note, image_url, category FROM checkins WHERE user_id = %s AND category = %s ORDER BY timestamp DESC",
                 (user_id, category),

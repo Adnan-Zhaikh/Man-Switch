@@ -389,6 +389,26 @@ class CheckInTests(AppTestCase):
         notes = [p["progress_note"] for p in c.get("/history?category=journal").json()]
         self.assertEqual(notes, ["a real post"])
 
+    def test_all_filter_returns_every_post_but_no_checkins(self):
+        c, _ = self.user()
+        for note, cat in (("a journal note", "journal"), ("a goal", "task"), ("keep this", "important")):
+            c.post("/checkin", data={"note": note, "category": cat})
+        c.post("/pulse", json={})
+        for url in ("/history?category=all", "/history"):
+            rows = c.get(url).json()
+            self.assertEqual(sorted(r["progress_note"] for r in rows), ["a goal", "a journal note", "keep this"], url)
+            self.assertEqual({r["category"] for r in rows}, {"journal", "task", "important"})
+        self.assertEqual([r["progress_note"] for r in c.get("/history?category=task").json()], ["a goal"])
+
+    def test_all_filter_is_private_and_newest_first(self):
+        a, _ = self.user()
+        b = self.client()
+        self.register(b, "bobby")
+        a.post("/checkin", data={"note": "first", "category": "journal"})
+        a.post("/checkin", data={"note": "second", "category": "important"})
+        self.assertEqual([r["progress_note"] for r in a.get("/history?category=all").json()], ["second", "first"])
+        self.assertEqual(b.get("/history?category=all").json(), [])
+
     def test_pulse_category_cannot_be_posted_directly(self):
         c, _ = self.user()
         self.assertEqual(c.post("/checkin", data={"note": "x", "category": "pulse"}).status_code, 400)

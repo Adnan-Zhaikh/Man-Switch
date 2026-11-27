@@ -110,9 +110,10 @@ class FakeStore:
     def _row(self, c):
         return (c["id"], c["timestamp"], c["progress_note"], c["image_url"], c["category"])
 
-    def get_all_checkins(self, user_id, category=None):
+    def get_all_checkins(self, user_id, category=None, exclude_category=None):
         rows = [c for c in self.checkins.values()
-                if c["user_id"] == user_id and (category is None or c["category"] == category)]
+                if c["user_id"] == user_id and (category is None or c["category"] == category)
+                and (exclude_category is None or c["category"] != exclude_category)]
         rows.sort(key=lambda c: c["timestamp"], reverse=True)
         return [self._row(c) for c in rows]
 

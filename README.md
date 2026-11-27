@@ -8,7 +8,7 @@ A self-hosted accountability journal and dead-man's switch. Check in regularly; 
 
 - **Dashboard:** consistency score and streaks, a 13-week activity heatmap, habit completion, tasks finished vs moved to a later day, check-in safety margin, weekday and time-of-day patterns, and plain-language insights. Switch between 7, 30 and 90 days.
 - **Check-in:** press and hold a button for a second (optionally pick a mood). No typing. Resets your deadline.
-- **Journal, Goals, Important:** notes with optional photos, full edit and delete. Posting also resets the deadline.
+- **Journal:** notes with optional photos, full edit and delete. Tag each post as **Journal**, **Goal** or **Important** and filter the feed by tag. Posting also resets the deadline.
 - **Habits:** daily streaks with a GitHub-style commit grid.
 - **Calendar:** plan events on any day. An **email arrives one hour before** each event.
 - **Tasks:** daily to-do list with reminders, stats and an Android widget feed (`/todo`).
@@ -85,7 +85,7 @@ See `.env.example` for the full list. Keep `.env` out of git; the Supabase secre
 | Auth | `/auth/register` (optional `email`), `/auth/login`, `/auth/logout`, `/auth/me`, `PUT /auth/email` |
 | Dashboard | `GET /dashboard?range=7\|30\|90&tz=` (read-only, your own data) |
 | Check-in | `GET/POST /pulse` (hold-to-confirm, optional `mood`) |
-| Posts | `POST /checkin` (journal/task/important), `PUT/DELETE /checkin/{id}`, `GET /history?category=` |
+| Posts | `POST /checkin` (tag: `journal`, `task` for Goal, or `important`), `PUT/DELETE /checkin/{id}`, `GET /history?category=` (omit or `all` for every post) |
 | Calendar | `GET /events?start=&end=`, `POST /events`, `PATCH/DELETE /events/{id}` (needs an email on the account) |
 | Habits | `/habits`, `/habits/{id}`, `/habits/{id}/logs/{date}` |
 | Tasks | `/todos`, `/todos/{id}`, `/todos/day/{date}`, `/todos/stats`, `/todos/settings`, `/widget/summary` |

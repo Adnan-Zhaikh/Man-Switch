@@ -17,15 +17,11 @@
 :root[data-theme="dark"][data-page="journal"]{--bg:#08101a;--sf:#0f1a2b;--ln:#1c3558;--ac:#3d9bff;--ak:#04182f;--mu:#8aa0bf;--tx:#e9f1fc}
 :root[data-theme="dark"][data-page="habits"]{--bg:#0e0c04;--sf:#18150a;--ln:#332e12;--ac:#ffd21f;--ak:#241c02;--mu:#aba074;--tx:#f7f1d9}
 :root[data-theme="dark"][data-page="calendar"]{--bg:#061418;--sf:#0c2128;--ln:#17424d;--ac:#19d3ec;--ak:#02222a;--mu:#7eaab3;--tx:#e2f6f9}
-:root[data-theme="dark"][data-page="task"]{--bg:#08140b;--sf:#0e2213;--ln:#1b4524;--ac:#38e060;--ak:#04210b;--mu:#82b08e;--tx:#e5f7ea}
-:root[data-theme="dark"][data-page="important"]{--bg:#150c05;--sf:#211409;--ln:#4a2a0d;--ac:#ff8c1a;--ak:#2b1200;--mu:#b89c80;--tx:#f9eee2}
 :root[data-theme="dark"][data-page="more"]{--bg:#0d1105;--sf:#171d0a;--ln:#2f3b12;--ac:#bdf02e;--ak:#1a2300;--mu:#9fac78;--tx:#f1f7df}
 :root[data-theme="light"][data-page="checkin"]{--bg:#fff3f4;--sf:#ffffff;--ln:#f6d0d6;--ac:#d11237;--ak:#ffffff;--mu:#8c5a62;--tx:#33080f}
 :root[data-theme="light"][data-page="journal"]{--bg:#eef5ff;--sf:#ffffff;--ln:#cbdffa;--ac:#0a5fd8;--ak:#ffffff;--mu:#566c8f;--tx:#0c1d36}
 :root[data-theme="light"][data-page="habits"]{--bg:#fbf7e6;--sf:#ffffff;--ln:#eadfae;--ac:#8f6a00;--ak:#ffffff;--mu:#716435;--tx:#2e2508}
 :root[data-theme="light"][data-page="calendar"]{--bg:#e9fafd;--sf:#ffffff;--ln:#bfe8f0;--ac:#00778c;--ak:#ffffff;--mu:#3f6f79;--tx:#06262c}
-:root[data-theme="light"][data-page="task"]{--bg:#edfaf0;--sf:#ffffff;--ln:#c8ebd0;--ac:#0f7a31;--ak:#ffffff;--mu:#4a7459;--tx:#0a2713}
-:root[data-theme="light"][data-page="important"]{--bg:#fff4e9;--sf:#ffffff;--ln:#fbd8b6;--ac:#c75300;--ak:#ffffff;--mu:#85603f;--tx:#331700}
 :root[data-theme="light"][data-page="more"]{--bg:#f7fbe6;--sf:#ffffff;--ln:#e0ecae;--ac:#587f00;--ak:#ffffff;--mu:#66763a;--tx:#1e2a00}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--tx);font-family:var(--sans);line-height:1.5;transition:background .2s}
@@ -55,14 +51,12 @@ nav button[data-page=dashboard]{--c:var(--c-dashboard)}
 nav button[data-page=journal]{--c:var(--c-journal)}
 nav button[data-page=habits]{--c:var(--c-habits)}
 nav button[data-page=calendar]{--c:var(--c-calendar)}
-nav button[data-page=task]{--c:var(--c-task)}
-nav button[data-page=important]{--c:var(--c-important)}
 nav button[data-page=more]{--c:var(--c-more)}
 main{padding:24px 22px;max-width:660px;width:100%}
 .top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
 .mbrand{display:none;font-family:var(--serif);font-size:20px;color:var(--ac)}
 #userBadge{font-size:13px;color:var(--mu)}
-#logoutBtn,#themeBtn,#importantBtn,#emailBtn,#notifyBtn,#notifyTest,#adminLink,#todoLink{background:none;border:1px solid var(--ln);color:var(--mu);border-radius:18px;padding:5px 13px;font:inherit;font-size:13px;cursor:pointer;text-decoration:none}
+#logoutBtn,#themeBtn,#emailBtn,#notifyBtn,#notifyTest,#adminLink,#todoLink{background:none;border:1px solid var(--ln);color:var(--mu);border-radius:18px;padding:5px 13px;font:inherit;font-size:13px;cursor:pointer;text-decoration:none}
 #notifyBtn:disabled{opacity:.6;cursor:default}
 #notifyBtn.on{color:var(--ac);border-color:var(--ac)}
 #notifyHint{margin:10px 0 0;font-size:13px;color:var(--ac);display:none}
@@ -277,7 +271,15 @@ textarea.fi{min-height:84px;resize:none;font-size:16px}
 .hab-top span{min-width:0;word-break:break-word}
 .hab small{display:block;color:var(--mu);font-size:12.5px;margin-top:4px}
 .dfoot{color:var(--mu);font-size:12.5px;margin:10px 0 0;line-height:1.45}
-.mobile-only{display:none}
+/* ---- Tags: Journal, Goal, Important ---- */
+.tagrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:12px 0 4px}
+.taglbl{font-size:13px;color:var(--mu);margin-right:2px}
+.tagbtn{--tc:var(--ac);border:1px solid var(--ln);background:none;color:var(--tx);border-radius:20px;padding:7px 14px;font:inherit;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+.tagbtn .tagdot{width:9px;height:9px;border-radius:50%;background:var(--tc);flex:none}
+.tagbtn[aria-pressed="true"]{border-color:var(--tc);background:color-mix(in srgb,var(--tc) 16%,transparent);font-weight:700}
+.feedrow{margin:20px 0 12px}
+.posttag{--tc:var(--ac);display:inline-flex;align-items:center;gap:6px;margin-left:10px;font-size:12.5px;color:var(--mu)}
+.posttag i{width:8px;height:8px;border-radius:50%;background:var(--tc)}
 @media (max-width:759px){
   #authShell{margin-top:4vh}
   .app{display:block}
@@ -287,8 +289,6 @@ textarea.fi{min-height:84px;resize:none;font-size:16px}
   nav button{flex:1;min-width:0;flex-direction:column;justify-content:center;gap:3px;font-size:10px;text-align:center;border-radius:0;padding:9px 0 8px}
   nav button.on{background:none;box-shadow:inset 0 2px 0 var(--c)}
   .cd{min-height:52px}
-  nav button[data-page=important]{display:none}
-  .mobile-only{display:flex}
   .dring{width:120px;height:120px}
   .hr{grid-template-columns:78px 1fr 40px}
   .hold{width:196px;height:196px}
@@ -341,8 +341,6 @@ textarea.fi{min-height:84px;resize:none;font-size:16px}
         <button data-page="journal"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M9 4v16"/></svg><span>Journal</span></button>
         <button data-page="habits"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c.6 3 4.5 5 4.5 9.5a4.5 4.5 0 0 1-9 0c0-1.8.9-3 2-4 0 1.8.8 2.8 1.8 2.8C11.3 8.8 10.9 5.6 12 3z"/></svg><span>Habits</span></button>
         <button data-page="calendar"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg><span>Calendar</span></button>
-        <button data-page="task"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6h10M10 12h10M10 18h10"/><path d="m3.5 6 1.5 1.5L7.5 5M3.5 12l1.5 1.5L7.5 11M3.5 18l1.5 1.5L7.5 17"/></svg><span>Goals</span></button>
-        <button data-page="important"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg><span>Important</span></button>
         <button data-page="more"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg><span>More</span></button>
       </nav>
     </div>
@@ -422,6 +420,7 @@ textarea.fi{min-height:84px;resize:none;font-size:16px}
         <textarea id="note" maxlength="2000"></textarea>
         <p class="hint" id="hint"></p>
         <div id="preview"><img id="prevImg" alt="Selected photo"><button id="rm" type="button" aria-label="Remove photo">&times;</button></div>
+        <div class="tagrow" role="group" aria-label="Tag this post"><span class="taglbl">Tag</span><span class="tagrow" id="postTags" style="margin:0"></span></div>
         <div class="bar">
           <button class="ic" id="gal" type="button">Photo</button>
           <button class="ic" id="cam" type="button">Camera</button>
@@ -433,6 +432,7 @@ textarea.fi{min-height:84px;resize:none;font-size:16px}
         <input type="file" id="fCam" accept="image/*" capture="environment" hidden>
       </section>
 
+      <div class="tagrow feedrow" id="feedFilter" role="group" aria-label="Filter entries"></div>
       <div id="feed"><div class="empty">Loading...</div></div>
           </div>
 
@@ -464,7 +464,6 @@ textarea.fi{min-height:84px;resize:none;font-size:16px}
         <p class="sub">Account, alerts and the rest.</p>
         <div class="group">
           <div class="line"><span class="what">Signed in<small id="userBadge"></small></span><button id="logoutBtn" type="button">Logout</button></div>
-          <div class="line mobile-only"><span class="what">Important<small>Notes you can't afford to lose</small></span><button id="importantBtn" type="button">Open</button></div>
           <div class="line"><span class="what">Email<small id="emailLabel">Not set. Needed for calendar reminders.</small></span><button id="emailBtn" type="button">Add</button></div>
           <div class="line"><span class="what">Appearance<small>Dark or light mode</small></span><button id="themeBtn" type="button">Light</button></div>
         </div>
@@ -488,7 +487,7 @@ textarea.fi{min-height:84px;resize:none;font-size:16px}
     <textarea id="editNote" maxlength="2000" aria-label="Entry text" style="width:100%;border:1px solid var(--ln);border-radius:8px;padding:8px;background:var(--bg);color:var(--tx);font:inherit;min-height:100px;resize:none"></textarea>
     <select id="editCategory" aria-label="Category">
       <option value="journal">Journal</option>
-      <option value="task">Tasks / Goals</option>
+      <option value="task">Goal</option>
       <option value="important">Important</option>
     </select>
     <div id="editPreview" style="position:relative;margin:12px 0;display:none">
@@ -577,13 +576,23 @@ textarea.fi{min-height:84px;resize:none;font-size:16px}
 </div>
 
 <script>
-const COPY={
-  journal:{t:"Journal",s:"Your thoughts, progress and everything in between.",ph:"What's on your mind today?",hint:""},
-  task:{t:"Tasks / Goals",s:"Turn your plans into progress.",ph:"What are you working on, and what's next?",hint:""},
-  important:{t:"Important saved",s:"Your links, notes and important stuff in one place.",ph:"Save a link, number or note",hint:"Keep real passwords in a password manager, not here."}
+const TAGS={
+  journal:{label:"Journal",plural:"Journal",ph:"What's on your mind today?",hint:""},
+  task:{label:"Goal",plural:"Goals",ph:"What are you working on, and what's next?",hint:""},
+  important:{label:"Important",plural:"Important",ph:"Save a link, number or note",hint:"Keep real passwords in a password manager, not here."}
 };
-const PAGES=["checkin","dashboard","journal","habits","calendar","task","important","more"];
-let page=(()=>{try{const p=localStorage.getItem("page");return PAGES.includes(p)?p:"checkin"}catch(e){return"checkin"}})(),file=null,editingId=null,editFile=null,editRemove=false,authMode="login",currentUser=null;
+const TAG_KEYS=["journal","task","important"];
+const PAGES=["checkin","dashboard","journal","habits","calendar","more"];
+const lsGet=k=>{try{return localStorage.getItem(k)}catch(e){return null}};
+const lsSet=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
+let feedFilter=["all"].concat(TAG_KEYS).includes(lsGet("feedFilter"))?lsGet("feedFilter"):"all";
+let postTag=TAG_KEYS.includes(lsGet("postTag"))?lsGet("postTag"):"journal";
+let page=(()=>{
+  const p=lsGet("page");
+  // Goals and Important used to be separate pages. They are tags on the Journal page now.
+  if(p==="task"||p==="important"){feedFilter=p;postTag=p;return"journal"}
+  return PAGES.includes(p)?p:"checkin";
+})(),file=null,editingId=null,editFile=null,editRemove=false,authMode="login",currentUser=null;
 const $=id=>document.getElementById(id);
 const root=document.documentElement;
 
@@ -727,16 +736,13 @@ $("logoutBtn").onclick=async()=>{
   showAuth();
 };
 
-const POST_PAGES=["journal","task","important"];
 function showPage(p){
   if(!PAGES.includes(p))p="checkin";
   page=p;
   root.dataset.page=p;
   try{localStorage.setItem("page",p)}catch(e){}
-  // On phones "Important" lives under More, so More stays highlighted there.
-  const navKey=(p==="important"&&window.matchMedia&&window.matchMedia("(max-width:759px)").matches)?"more":p;
-  document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("on",b.dataset.page===navKey));
-  const posts=POST_PAGES.includes(p);
+  document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("on",b.dataset.page===p));
+  const posts=p==="journal";
   $("postsView").classList.toggle("hidden",!posts);
   $("habitsView").classList.toggle("hidden",p!=="habits");
   $("checkinView").classList.toggle("hidden",p!=="checkin");
@@ -745,12 +751,9 @@ function showPage(p){
   $("moreView").classList.toggle("hidden",p!=="more");
   window.scrollTo(0,0);
   if(posts){
-    $("title").textContent=COPY[p].t;
-    $("sub").textContent=COPY[p].s;
-    $("note").placeholder=COPY[p].ph;
-    $("hint").textContent=COPY[p].hint;
-    $("hint").style.display=COPY[p].hint?"block":"none";
-    $("editCategory").value=p;
+    $("title").textContent="Journal";
+    $("sub").textContent="Your thoughts, goals and important notes in one place.";
+    drawTags();
     loadFeed();
   }else if(p==="habits"){loadHabits()}
   else if(p==="checkin"){loadPulse()}
@@ -759,16 +762,37 @@ function showPage(p){
 }
 document.querySelectorAll("#nav button").forEach(b=>b.onclick=()=>showPage(b.dataset.page));
 
+function applyTag(){
+  const t=TAGS[postTag];
+  $("note").placeholder=t.ph;
+  $("hint").textContent=t.hint;
+  $("hint").style.display=t.hint?"block":"none";
+}
+function drawTags(){
+  const chip=(key,label,on)=>`<button type="button" class="tagbtn" data-tag="${key}" aria-pressed="${on}" style="--tc:${key==="all"?"var(--ac)":"var(--c-"+key+")"}"><i class="tagdot"></i>${esc(label)}</button>`;
+  $("postTags").innerHTML=TAG_KEYS.map(k=>chip(k,TAGS[k].label,k===postTag)).join("");
+  $("feedFilter").innerHTML=chip("all","All",feedFilter==="all")+TAG_KEYS.map(k=>chip(k,TAGS[k].plural,k===feedFilter)).join("");
+  applyTag();
+}
+function setFilter(key,tagToo=true){
+  feedFilter=key;lsSet("feedFilter",key);
+  if(tagToo&&key!=="all"){postTag=key;lsSet("postTag",key)}
+  drawTags();loadFeed();
+}
+$("postTags").onclick=e=>{const b=e.target.closest(".tagbtn");if(!b)return;postTag=b.dataset.tag;lsSet("postTag",postTag);drawTags()};
+$("feedFilter").onclick=e=>{const b=e.target.closest(".tagbtn");if(b)setFilter(b.dataset.tag)};
+const tagPill=c=>TAGS[c]?`<span class="posttag" style="--tc:var(--c-${c})"><i></i>${esc(TAGS[c].label)}</span>`:"";
+
 async function loadFeed(){
   $("feed").innerHTML='<div class="empty">Loading...</div>';
-  const mine=page;
+  const mine=feedFilter;
   try{
     const r=await apiFetch("/history?category="+mine);
     if(!r.ok)throw new Error();
     const rows=await r.json();
-    if(mine!==page)return;
-    if(!rows.length){$("feed").innerHTML='<div class="empty">Nothing here yet. Write your first entry above.</div>';return}
-    $("feed").innerHTML=rows.map(p=>`<article class="card" data-id="${p.id}"><div class="meta"><span>${esc(when(p.timestamp))}</span><div class="card-actions"><button class="card-btn edit-btn" data-id="${p.id}">Edit</button><button class="card-btn delete-btn" data-id="${p.id}">Delete</button></div></div><p class="note">${esc(p.progress_note)}</p>${p.image_url?`<img src="${esc(p.image_url)}" alt="Attached photo" loading="lazy">`:""}</article>`).join("");
+    if(mine!==feedFilter)return;
+    if(!rows.length){$("feed").innerHTML=mine==="all"?'<div class="empty">Nothing here yet. Write your first entry above.</div>':`<div class="empty">Nothing tagged ${esc(TAGS[mine].label)} yet.</div>`;return}
+    $("feed").innerHTML=rows.map(p=>`<article class="card" data-id="${p.id}" data-cat="${esc(p.category)}"><div class="meta"><span>${esc(when(p.timestamp))}${tagPill(p.category)}</span><div class="card-actions"><button class="card-btn edit-btn" data-id="${p.id}">Edit</button><button class="card-btn delete-btn" data-id="${p.id}">Delete</button></div></div><p class="note">${esc(p.progress_note)}</p>${p.image_url?`<img src="${esc(p.image_url)}" alt="Attached photo" loading="lazy">`:""}</article>`).join("");
     document.querySelectorAll(".edit-btn").forEach(btn=>btn.onclick=()=>openEditModal(parseInt(btn.dataset.id,10)));
     document.querySelectorAll(".delete-btn").forEach(btn=>btn.onclick=()=>deleteEntry(parseInt(btn.dataset.id,10)));
   }catch(e){if(!$("authShell").classList.contains("hidden"))return;$("feed").innerHTML='<div class="empty">Couldn\'t load entries. Refresh to try again.</div>'}
@@ -781,7 +805,7 @@ function openEditModal(id){
   editFile=null;
   editRemove=false;
   $("editNote").value=card.querySelector(".note").textContent;
-  $("editCategory").value=page;
+  $("editCategory").value=card.dataset.cat||"journal";
   $("editMsg").textContent="";
   const img=card.querySelector("img");
   if(img){$("editPreview").style.display="block";$("editPreviewImg").src=img.src}else{$("editPreview").style.display="none"}
@@ -830,12 +854,12 @@ $("rm").onclick=()=>{file=null;$("preview").style.display="none"};
 $("post").onclick=async()=>{
   const note=$("note").value.trim();
   if(!note){$("msg").textContent="Write something first.";return}
-  const fd=new FormData();fd.append("note",note);fd.append("category",page);if(file)fd.append("image",file);
+  const fd=new FormData();fd.append("note",note);fd.append("category",postTag);if(file)fd.append("image",file);
   $("post").disabled=true;$("msg").textContent="Posting...";
   try{
     const r=await apiFetch("/checkin",{method:"POST",body:fd});
     if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.detail||"Post failed")}
-    $("note").value="";file=null;$("preview").style.display="none";$("msg").textContent="Posted.";await loadFeed();
+    $("note").value="";file=null;$("preview").style.display="none";$("msg").textContent="Posted.";if(feedFilter!=="all"&&feedFilter!==postTag)setFilter(postTag,false);else await loadFeed();
   }catch(e){$("msg").textContent=e.message||"Post failed. Try again."}finally{$("post").disabled=false}
 };
 
@@ -1431,7 +1455,6 @@ async function loadDashboard(){
     $("dashMsg").textContent="";renderDashboard(d);
   }catch(e){if(my===DASH.token&&$("authShell").classList.contains("hidden"))$("dashMsg").textContent=e.message||"Couldn't load the dashboard."}
 }
-$("importantBtn").onclick=()=>showPage("important");
 
 async function init(){
   try{const c=await (await fetch("/auth/config")).json();$("registerTab").classList.toggle("hidden",!c.registration_open)}catch(e){}
